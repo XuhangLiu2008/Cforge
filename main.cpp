@@ -4,6 +4,43 @@
 
 using namespace std;
 
+/*
+MARK: KEY PRINCIPLE
+
+            |             |             |                |             |
+       E_f0 |        E_f1 |        E_f2 |                |    E_f(n-1) |        E_fn
+----------> | ----------> | ----------> | ----......---> | ----------> | ---------->
+            |             |             |                |             |
+<---------- | <---------- | <---------- | <---......---- | <---------- | <----------
+E_b0        | E_b1        | E_b2        |                | E_b(n-1)    | E_bn
+            |             |             |                |             |
+
+
+E : the expectation of the number of passing for one photon
+
+E_f0, E_bn given
+E_b0, E_fn needed (exactly the same as the ratio of the intensity)
+
+
+modeled by Markov chain, we get:
+
+E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
+E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
+
+for each i
+
+
+where:
+
+r[i][j] = ( (n_i - n_j) / (n_i + n_j) ) ** 2  # reflected ratio at the surface
+P[i][j] = (1 - r[i][j]) * exp(-K[j] * d)
+R[i][j] = r[i][j] * exp(-K[i] * d)
+
+
+get E_b0 and E_fn by solving the simultaneous equations
+
+*/
+
 struct Filament {
     string brand;
     string name;
@@ -118,13 +155,13 @@ class BatchExpectPassMatrix {
             // 1*1 for single colour and 3*1 for RGB
 
             map<char, int> direction_map = {
-                {'F', 0},
-                {'B', 1}
+                {'f', 0},
+                {'b', 1}
             };
             map<char, int> colour_map = {
-                {'R', 0},
-                {'G', 1},
-                {'B', 2}
+                {'r', 0},
+                {'g', 1},
+                {'b', 2}
             };
             if (colour != '*') // * for all
                 Matrix[batch_index*3 + colour_map[colour]][layer_index_1*2 + direction_map[direction_1]][layer_index_2*2 + direction_map[direction_2]] = modified_value.item();
@@ -142,9 +179,33 @@ void BatchExpectPassMatrix::SetMatrix(torch::Tensor* BatchFilaList) {
 
     this->fila_list = (*BatchFilaList).clone();
 
-    for (int i = 0;i < batch_size;i++)
-    for (int j = 0;j < num_layers;j++){
+    for (int batch_index = 0;batch_index < batch_size;batch_index++)
+    for (int layer_index = 1;layer_index < num_layers;layer_index++) {
+        
+        _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'f',
+            torch::tensor({-1.0, -1.0, -1.0}));
+        _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'b',
+            torch::tensor({-1.0, -1.0, -1.0}));
+    }
 
+    for (int batch_index = 0;batch_index < batch_size;batch_index++)
+    for (int layer_index = 1;layer_index < num_layers;layer_index++) {
+
+        // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
+        _assignElement(batch_index, '*', layer_index, 'f', layer_index-1, 'f',
+            P[layer_index-1][layer_index]);
+        _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'b',
+            R[layer_index][layer_index-1]);
+    }
+
+    for (int batch_index = 0;batch_index < batch_size;batch_index++)
+    for (int layer_index = 0;layer_index < (num_layers-1);layer_index++) {
+
+        // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
+        _assignElement(batch_index, '*', layer_index, 'b', layer_index+1, 'b',
+            P[layer_index+1][layer_index]);
+        _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
+            R[layer_index][layer_index+1]);
     }
 
 }
