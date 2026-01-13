@@ -1,6 +1,7 @@
 #include <torch/torch.h>
 #include <iostream>
 #include <string>
+#include <utility>
 
 using namespace std;
 
@@ -21,7 +22,6 @@ E : the expectation of the number of passing for one photon
 
 E_f0, E_bn given
 E_b0, E_fn needed (exactly the same as the ratio of the intensity)
-
 
 modeled by Markov chain, we get:
 
@@ -60,26 +60,26 @@ Filament::Filament(string brand, string name,
     torch::Tensor refractive_index,
     torch::Tensor extinction_coefficient) {
 
-    this->brand = brand;
-    this->name = name;
-    this->colour = colour;
-    this->refractive_index = refractive_index;
-    this->extinction_coefficient = extinction_coefficient;
+    this->brand = std::move(brand);
+    this->name = std::move(name);
+    this->colour = std::move(colour);
+    this->refractive_index = std::move(refractive_index);
+    this->extinction_coefficient = std::move(extinction_coefficient);
 }
 
-torch::Tensor SurfReflct(Filament a, Filament b) {
+torch::Tensor SurfReflct(const Filament &a, const Filament &b) {
     return torch::pow((a.refractive_index - b.refractive_index) / (a.refractive_index + b.refractive_index), 2);
 }
 
-torch::Tensor LambertEffct(Filament a, float d) {
+torch::Tensor LambertEffct(const Filament &a, const float d) {
     return torch::exp( -1 * a.extinction_coefficient * d);
 }
 
 
-static const int MAX_FILA = 105;
-static const int MAXBATCH = 10005;
-static const int MAXLAYER = 105;
-static const int MAXVARIABLES = 215;
+static constexpr int MAX_FILA = 105;
+static constexpr int MAXBATCH = 10005;
+static constexpr int MAXLAYER = 105;
+static constexpr int MAXVARIABLES = 215;
 static inline const Filament AIR = Filament("Nature", "Air",
     torch::tensor({0, 0, 0}, torch::kUInt8),  // colour
     torch::tensor({1.0, 1.0, 1.0}),           // refractive index
@@ -126,34 +126,55 @@ class BatchExpectPassMatrix {
         // 0th is the default material
         // most times should be air
 
-        BatchExpectPassMatrix(int batch_size, int num_layers, int num_fila, torch::Tensor* P, torch::Tensor* R) {
+        // init
+        BatchExpectPassMatrix(const int batch_size,
+                              const int num_layers,
+                              const int num_fila,
+                              const torch::Tensor* P,
+                              const torch::Tensor* R) {
 
             this->batch_size = batch_size;
             this->num_layers = num_layers;
             this->num_variables = 2 * num_layers;
             this->num_fila = num_fila;
 
-            this->P = (*P).clone(); // deep copy
-            this->R = (*R).clone();
+            this->P = P->clone(); // deep copy
+            this->R = R->clone();
 
             this->fila_list = torch::zeros((batch_size, num_layers), torch::kUInt32);
 
-            this->Matrix = torch::zeros((3 * batch_size, num_variables, num_variables), torch::kMPS);
+            this->Matrix = torch::zeros((batch_size * 3, num_variables, num_variables), torch::kMPS);
             // 3 for RGB
+
+            for (int batch_index = 0;batch_index < batch_size;batch_index++)
+                for (int layer_index = 0;layer_index < num_layers;layer_index++) {
+
+                    _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'f',
+                        torch::tensor({-1.0, -1.0, -1.0}));
+                    _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'b',
+                        torch::tensor({-1.0, -1.0, -1.0}));
+                }
         }
 
-        torch::Tensor Solve(torch::Tensor* left_input, torch::Tensor* right_input);
+        torch::Tensor Solve(const torch::Tensor* left_input, const torch::Tensor* right_input);
         void Modify(int batch_index, int layer_index, int target_fila);
         void BatchModify(int* layer_index, int* target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
         void Clear();
-        void SetMatrix(torch::Tensor* BatchFilaList);
+        void SetMatrix(const torch::Tensor* BatchFilaList);
         // a whole integer array of fila_index with shape batch_size * num_layers
 
     private:
         torch::Tensor Matrix;
         // (3 * batch_size, num_variables, num_variables)
-        void _assignElement(int batch_index, char colour, int layer_index_1, char direction_1, int layer_index_2, char direction_2, torch::Tensor modified_value){
+        void _assignElement(const int batch_index,
+                            const char colour,
+                            const int layer_index_1,
+                            const char direction_1,
+                            const int layer_index_2,
+                            const char direction_2,
+                            const torch::Tensor &modified_value) {
+
             // modified value can be either a single-item tensor or a 3*1 tensor
             // 1*1 for single colour and 3*1 for RGB
 
@@ -176,39 +197,47 @@ class BatchExpectPassMatrix {
                 Matrix[batch_index*3 + 2][layer_index_1*2 + direction_map[direction_1]][layer_index_2*2 + direction_map[direction_2]] = modified_value[2];
             }
         };
+
+        // _updateLine function should be called after the fila_list is modified
+        void _updateLine(const int batch_index, const int layer_index, const char direction) {
+            if (direction == 'f') {
+
+                if (layer_index == 0) return;
+
+                // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
+                _assignElement(batch_index, '*', layer_index, 'f', layer_index-1, 'f',
+                    P[fila_list[layer_index-1]][fila_list[layer_index]]);
+                _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'b',
+                    R[fila_list[layer_index]][fila_list[layer_index-1]]);
+            }
+            else if (direction == 'b') {
+
+                if (layer_index == num_layers-1) return;
+
+                // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
+                _assignElement(batch_index, '*', layer_index, 'b', layer_index+1, 'b',
+                    P[layer_index+1][layer_index]);
+                _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
+                    R[layer_index][layer_index+1]);
+            }
+            else throw std::invalid_argument("Invalid direction");
+        }
 };
 
-void BatchExpectPassMatrix::SetMatrix(torch::Tensor* BatchFilaList) {
+void BatchExpectPassMatrix::SetMatrix(const torch::Tensor* BatchFilaList) {
 
-    this->fila_list = (*BatchFilaList).clone();
-
-    for (int batch_index = 0;batch_index < batch_size;batch_index++)
-    for (int layer_index = 0;layer_index < num_layers;layer_index++) {
-
-        _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'f',
-            torch::tensor({-1.0, -1.0, -1.0}));
-        _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'b',
-            torch::tensor({-1.0, -1.0, -1.0}));
-    }
+    this->fila_list = BatchFilaList->clone();
 
     for (int batch_index = 0;batch_index < batch_size;batch_index++)
     for (int layer_index = 1;layer_index < num_layers;layer_index++) {
 
-        // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
-        _assignElement(batch_index, '*', layer_index, 'f', layer_index-1, 'f',
-            P[layer_index-1][layer_index]);
-        _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'b',
-            R[layer_index][layer_index-1]);
+        _updateLine(batch_index, layer_index, 'f');
     }
 
     for (int batch_index = 0;batch_index < batch_size;batch_index++)
     for (int layer_index = 0;layer_index < (num_layers-1);layer_index++) {
 
-        // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
-        _assignElement(batch_index, '*', layer_index, 'b', layer_index+1, 'b',
-            P[layer_index+1][layer_index]);
-        _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
-            R[layer_index][layer_index+1]);
+        _updateLine(batch_index, layer_index, 'b');
     }
 }
 
@@ -218,9 +247,9 @@ void BatchExpectPassMatrix::Clear() {
     SetMatrix(&fila_list);
 }
 
-torch::Tensor BatchExpectPassMatrix::Solve(torch::Tensor* left_input, torch::Tensor* right_input) {
+torch::Tensor BatchExpectPassMatrix::Solve(const torch::Tensor* left_input, const torch::Tensor* right_input) {
     // the shape of the left/right_input should be (batch_size*3)
-    torch::Tensor Constants = torch::zeros((3 * batch_size, num_variables));
+    torch::Tensor Constants = torch::zeros((batch_size * 3, num_variables));
 
     for (int i = 0;i < (batch_size*3);i++) {
 
@@ -234,22 +263,38 @@ torch::Tensor BatchExpectPassMatrix::Solve(torch::Tensor* left_input, torch::Ten
     return torch::linalg_solve(Matrix, Constants.to(torch::kMPS)).to(torch::kCPU);
 
 }
+// MARK: something to improve
 // as most of the problems have the same several inputs
 // the tensor Constants can be stored, where there is some space to optimize the time
 // maybe two functions can be given to specially optimize the cases of the only front/back_light
 // (E_f0 = 1, E_bn = 0 / E_f0 = 0, E_bn = 1)
 
-void BatchExpectPassMatrix::Modify(int batch_index, int layer_index, int target_fila) {
+void BatchExpectPassMatrix::Modify(const int batch_index, const int layer_index, const int target_fila) {
 
     if (layer_index == 0 || layer_index == num_layers - 1) {
-        cout << "The modification of the first/last layer is not expected. " << endl;
-        cout << "Check if that is correct. " << endl;
+        throw runtime_error("The modification of the first/last layer is not expected.");
     }
 
     fila_list[batch_index][layer_index] = target_fila;
 
-    // all the equations that P[i][] / R[i][] involves in
-    //
+    // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
+    // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
+    // for each i
+
+    // all the equations that P[i][] / P[][i] / R[i][] / R[][i] involves in (needed to update):
+    do {
+    // E_b(i-1) = P[i][i-1] * E_bi + R[i-1][i] * E_f(i-1)
+    _updateLine(batch_index, layer_index-1, 'f');
+
+    // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
+    _updateLine(batch_index, layer_index, 'f');
+    // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
+    _updateLine(batch_index, layer_index, 'b');
+
+    // E_f(i+1) = P[i][i+1] * E_fi + R[i+1][i] * E_b(i+1)
+    _updateLine(batch_index, layer_index+1, 'f');
+    } while (false);
+
 }
 
 int main() {
