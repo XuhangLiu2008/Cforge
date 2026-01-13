@@ -119,7 +119,7 @@ class BatchExpectPassMatrix {
         int num_fila;
 
         torch::Tensor fila_list;
-        // a list of fila_index at each layer
+        // a list of fila_index at each layer with shape (batch_size, num_layers)
 
         torch::Tensor P;
         torch::Tensor R;
@@ -158,7 +158,7 @@ class BatchExpectPassMatrix {
 
         torch::Tensor Solve(const torch::Tensor* left_input, const torch::Tensor* right_input);
         void Modify(int batch_index, int layer_index, int target_fila);
-        void BatchModify(int* layer_index, int* target_fila);
+        void BatchModify(const int* layer_index, const int* target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
         void Clear();
         void SetMatrix(const torch::Tensor* BatchFilaList);
@@ -206,9 +206,9 @@ class BatchExpectPassMatrix {
 
                 // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
                 _assignElement(batch_index, '*', layer_index, 'f', layer_index-1, 'f',
-                    P[fila_list[layer_index-1]][fila_list[layer_index]]);
+                    P[fila_list[batch_index][layer_index-1]][fila_list[batch_index][layer_index]]);
                 _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'b',
-                    R[fila_list[layer_index]][fila_list[layer_index-1]]);
+                    R[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index-1]]);
             }
             else if (direction == 'b') {
 
@@ -216,9 +216,9 @@ class BatchExpectPassMatrix {
 
                 // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
                 _assignElement(batch_index, '*', layer_index, 'b', layer_index+1, 'b',
-                    P[layer_index+1][layer_index]);
+                    P[fila_list[batch_index][layer_index+1]][fila_list[batch_index][layer_index]]);
                 _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
-                    R[layer_index][layer_index+1]);
+                    R[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index+1]]);
             }
             else throw std::invalid_argument("Invalid direction");
         }
@@ -254,10 +254,11 @@ torch::Tensor BatchExpectPassMatrix::Solve(const torch::Tensor* left_input, cons
     for (int i = 0;i < (batch_size*3);i++) {
 
         // E_f0
-        Constants[i][0] = (*left_input)[i];
+        Constants[i][0] = -(*left_input)[i];
+        // negative as the coefficients on the main diagonal are all -1 instead of 1
 
         // E_bn
-        Constants[i][num_variables-1] = (*right_input)[num_variables-1];
+        Constants[i][num_variables-1] = -(*right_input)[num_variables-1];
     }
 
     return torch::linalg_solve(Matrix, Constants.to(torch::kMPS)).to(torch::kCPU);
@@ -295,6 +296,16 @@ void BatchExpectPassMatrix::Modify(const int batch_index, const int layer_index,
     _updateLine(batch_index, layer_index+1, 'f');
     } while (false);
 
+}
+
+void BatchExpectPassMatrix::BatchModify(const int *layer_index, const int *target_fila) {
+    // layer_index : integer 1d array with length batch_size
+    // target_fila : integer 1d array with length batch_size
+
+    for (int batch_index = 0;batch_index < batch_size;batch_index++) {
+        if (layer_index[batch_index] == -1) continue;
+        Modify(batch_index, layer_index[batch_index], target_fila[batch_index]);
+    }
 }
 
 int main() {
