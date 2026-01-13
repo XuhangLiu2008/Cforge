@@ -139,7 +139,7 @@ class BatchExpectPassMatrix {
             // 3 for RGB
         }
 
-        torch::Tensor* Solve(torch::Tensor left_input, torch::Tensor right_input);
+        torch::Tensor Solve(torch::Tensor left_input, torch::Tensor right_input);
         void Modify(int batch_index, int layer_index, int target_fila);
         void BatchModify(int* layer_index, int* target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
@@ -181,7 +181,7 @@ void BatchExpectPassMatrix::SetMatrix(torch::Tensor* BatchFilaList) {
 
     for (int batch_index = 0;batch_index < batch_size;batch_index++)
     for (int layer_index = 1;layer_index < num_layers;layer_index++) {
-        
+
         _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'f',
             torch::tensor({-1.0, -1.0, -1.0}));
         _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'b',
@@ -210,6 +210,22 @@ void BatchExpectPassMatrix::SetMatrix(torch::Tensor* BatchFilaList) {
 
 }
 
+torch::Tensor BatchExpectPassMatrix::Solve(torch::Tensor left_input, torch::Tensor right_input) {
+    // the shaoe of the left/right_input should be (batch_size*3)
+    torch::Tensor Constants = torch::zeros((3 * batch_size, num_variables));
+
+    for (int i = 0;i < (batch_size*3);i++) {
+
+        // E_f0
+        Constants[i][0] = left_input[i];
+
+        // E_bn
+        Constants[i][num_variables-1] = right_input[num_variables-1];
+    }
+
+    return torch::linalg_solve(Matrix, Constants.to(torch::kMPS)).to(torch::kCPU);
+
+}
 
 int main() {
     torch::Tensor x = torch::rand({2, 3});
