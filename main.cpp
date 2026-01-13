@@ -154,15 +154,35 @@ class BatchExpectPassMatrix {
                     _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'b',
                         torch::tensor({-1.0, -1.0, -1.0}));
                 }
+
+            this->BACKLIGHT_CONST = torch::zeros((batch_size * 3, num_variables), torch::kFloat32).to(torch::kMPS);
+            this->BACKLIGHT_CONST.index_put_({torch::indexing::Slice(), 0}, -1.0); // E_f0
+
+            this->FRONTLIGHT_CONST = torch::zeros((batch_size * 3, num_variables), torch::kFloat32).to(torch::kMPS);
+            this->FRONTLIGHT_CONST.index_put_({torch::indexing::Slice(), num_variables-1}, -1.0); // E_bn
         }
 
-        torch::Tensor Solve(const torch::Tensor* left_input, const torch::Tensor* right_input);
+        torch::Tensor* Solve(const torch::Tensor* left_input, const torch::Tensor* right_input);
+        torch::Tensor* Solve_BACKLIGHT() {
+            torch::Tensor res = torch::linalg_solve(Matrix, BACKLIGHT_CONST);
+            return &res;
+        };
+        torch::Tensor* Solve_FRONTLIGHT() {
+            torch::Tensor res = torch::linalg_solve(Matrix, FRONTLIGHT_CONST);
+            return &res;
+        }
+
         void Modify(int batch_index, int layer_index, int target_fila);
         void BatchModify(const int* layer_index, const int* target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
         void Clear();
         void SetMatrix(const torch::Tensor* BatchFilaList);
         // a whole integer array of fila_index with shape batch_size * num_layers
+        static pair<torch::Tensor*, torch::Tensor*> ExtractIntensity(const torch::Tensor* BatchExpectPass) {
+            // BatchExpectPass: shape(batch_size * 3, num_variables)
+            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 1}); // E_b0
+            torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-1}); // E_fn
+        };
 
     private:
         torch::Tensor Matrix;
@@ -222,6 +242,9 @@ class BatchExpectPassMatrix {
             }
             else throw std::invalid_argument("Invalid direction");
         }
+
+        torch::Tensor BACKLIGHT_CONST;
+        torch::Tensor FRONTLIGHT_CONST;
 };
 
 void BatchExpectPassMatrix::SetMatrix(const torch::Tensor* BatchFilaList) {
@@ -247,7 +270,7 @@ void BatchExpectPassMatrix::Clear() {
     SetMatrix(&fila_list);
 }
 
-torch::Tensor BatchExpectPassMatrix::Solve(const torch::Tensor* left_input, const torch::Tensor* right_input) {
+torch::Tensor* BatchExpectPassMatrix::Solve(const torch::Tensor* left_input, const torch::Tensor* right_input) {
     // the shape of the left/right_input should be (batch_size*3)
     torch::Tensor Constants = torch::zeros((batch_size * 3, num_variables));
 
@@ -261,14 +284,10 @@ torch::Tensor BatchExpectPassMatrix::Solve(const torch::Tensor* left_input, cons
         Constants[i][num_variables-1] = -(*right_input)[num_variables-1];
     }
 
-    return torch::linalg_solve(Matrix, Constants.to(torch::kMPS)).to(torch::kCPU);
+    torch::Tensor res = torch::linalg_solve(Matrix, Constants.to(torch::kMPS));
+    return &res;
 
 }
-// MARK: something to improve
-// as most of the problems have the same several inputs
-// the tensor Constants can be stored, where there is some space to optimize the time
-// maybe two functions can be given to specially optimize the cases of the only front/back_light
-// (E_f0 = 1, E_bn = 0 / E_f0 = 0, E_bn = 1)
 
 void BatchExpectPassMatrix::Modify(const int batch_index, const int layer_index, const int target_fila) {
 
