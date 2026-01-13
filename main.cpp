@@ -207,7 +207,12 @@ void BatchExpectPassMatrix::SetMatrix(torch::Tensor* BatchFilaList) {
         _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
             R[layer_index][layer_index+1]);
     }
+}
 
+void BatchExpectPassMatrix::Clear() {
+    // set all fila to default (0)
+    fila_list = torch::zeros_like(fila_list);
+    SetMatrix(&fila_list);
 }
 
 torch::Tensor BatchExpectPassMatrix::Solve(torch::Tensor left_input, torch::Tensor right_input) {
