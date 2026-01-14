@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace std;
 
@@ -76,26 +77,31 @@ torch::Tensor LambertEffct(const Filament &a, const float d) {
 }
 
 
-static constexpr int MAX_FILA = 105;
-static constexpr int MAXBATCH = 10005;
-static constexpr int MAXLAYER = 105;
-static constexpr int MAXVARIABLES = 215;
 static inline const Filament AIR = Filament("Nature", "Air",
     torch::tensor({0, 0, 0}, torch::kUInt8),  // colour
     torch::tensor({1.0, 1.0, 1.0}),           // refractive index
     torch::tensor({0.0, 0.0, 0.0}));          // extinction coefficient
 
-class FilaMatch {
+
+
+class FilaGroup {
 
     public:
         int num_fila;
-        Filament filaments[MAX_FILA];
-        int max_layer;
+        vector<Filament> filaments;
         float32_t thickness;
 
-    private:
         torch::Tensor P;
         torch::Tensor R;
+
+        FilaGroup(const int num_fila, const float32_t thickness, const vector<Filament> *filaments) {
+            this->num_fila = num_fila;
+            this->thickness = thickness;
+            this->filaments = *filaments;
+        }
+
+    private:
+
         void _calculatePnR(){
             P = torch::zeros((num_fila, num_fila, 3));
             R = torch::zeros((num_fila, num_fila, 3));
@@ -109,6 +115,8 @@ class FilaMatch {
         };
 };
 
+
+
 class BatchExpectPassMatrix {
 
     public:
@@ -116,30 +124,25 @@ class BatchExpectPassMatrix {
         int num_layers;
         // the filaments at the first/last layer should be air
         int num_variables;
-        int num_fila;
 
         torch::Tensor fila_list;
         // a list of fila_index at each layer with shape (batch_size, num_layers)
 
-        torch::Tensor P;
-        torch::Tensor R;
-        // 0th is the default material
-        // most times should be air
+        FilaGroup* filaments;
 
         // init
         BatchExpectPassMatrix(const int batch_size,
                               const int num_layers,
-                              const int num_fila,
-                              const torch::Tensor* P,
-                              const torch::Tensor* R) {
+                              FilaGroup* filaments) {
 
             this->batch_size = batch_size;
             this->num_layers = num_layers;
             this->num_variables = 2 * num_layers;
-            this->num_fila = num_fila;
 
-            this->P = P->clone(); // deep copy
-            this->R = R->clone();
+            this->filaments = filaments;
+
+            this->P = &(this->filaments->P);
+            this->R = &(this->filaments->R);
 
             this->fila_list = torch::zeros((batch_size, num_layers), torch::kUInt32);
 
@@ -185,6 +188,12 @@ class BatchExpectPassMatrix {
         };
 
     private:
+
+        torch::Tensor* P;
+        torch::Tensor* R;
+        // 0th is the default material
+        // most times should be air
+
         torch::Tensor Matrix;
         // (3 * batch_size, num_variables, num_variables)
         void _assignElement(const int batch_index,
@@ -226,9 +235,9 @@ class BatchExpectPassMatrix {
 
                 // E_fi = P[i-1][i] * E_f(i-1) + R[i][i-1] * E_bi
                 _assignElement(batch_index, '*', layer_index, 'f', layer_index-1, 'f',
-                    P[fila_list[batch_index][layer_index-1]][fila_list[batch_index][layer_index]]);
+                    (*P)[fila_list[batch_index][layer_index-1]][fila_list[batch_index][layer_index]]);
                 _assignElement(batch_index, '*', layer_index, 'f', layer_index, 'b',
-                    R[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index-1]]);
+                    (*R)[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index-1]]);
             }
             else if (direction == 'b') {
 
@@ -236,9 +245,9 @@ class BatchExpectPassMatrix {
 
                 // E_bi = P[i+1][i] * E_b(i+1) + R[i][i+1] * E_fi
                 _assignElement(batch_index, '*', layer_index, 'b', layer_index+1, 'b',
-                    P[fila_list[batch_index][layer_index+1]][fila_list[batch_index][layer_index]]);
+                    (*P)[fila_list[batch_index][layer_index+1]][fila_list[batch_index][layer_index]]);
                 _assignElement(batch_index, '*', layer_index, 'b', layer_index, 'f',
-                    R[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index+1]]);
+                    (*R)[fila_list[batch_index][layer_index]][fila_list[batch_index][layer_index+1]]);
             }
             else throw std::invalid_argument("Invalid direction");
         }
@@ -326,6 +335,15 @@ void BatchExpectPassMatrix::BatchModify(const int *layer_index, const int *targe
         Modify(batch_index, layer_index[batch_index], target_fila[batch_index]);
     }
 }
+
+
+
+class Optimizer {
+    public:
+
+};
+
+
 
 int main() {
     torch::Tensor x = torch::rand({2, 3});
