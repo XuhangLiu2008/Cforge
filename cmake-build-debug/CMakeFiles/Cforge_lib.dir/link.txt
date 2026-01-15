@@ -1,0 +1,2 @@
+/usr/bin/ar qc libCforge_lib.a CMakeFiles/Cforge_lib.dir/Filaments.cpp.o CMakeFiles/Cforge_lib.dir/BatchExpectPassMatrix.cpp.o
+/usr/bin/ranlib libCforge_lib.a
