@@ -58,7 +58,6 @@ int _test_main_FilaGroup() {
 } // PASS
 
 int _test_main_BatchExpectPassMatrix() {
-    cout << 114514 << endl;
 
     torch::Tensor refra_index = torch::tensor({9.47557073, 4.7540685, 4.45918725});
     torch::Tensor extinc_coeff = torch::tensor({0.23565427, 1.77511957, 6.07312633});
@@ -71,8 +70,6 @@ int _test_main_BatchExpectPassMatrix() {
     vector<Filament> vec_fila;
     vec_fila.push_back(AIR);
     vec_fila.push_back(JAYO_orange);
-
-    cout << torch::exp(torch::tensor({1, 1, 1})) << endl;
 
     FilaGroup fila_group = FilaGroup(2, 0.1, &vec_fila);
 
@@ -101,7 +98,7 @@ int _test_main_BatchExpectPassMatrix() {
 
     cout << "FRONTLIGHT" << endl << BatchExpectPassMatrix::ExtractIntensity(outcome_front).second->to(torch::kCPU) << endl;
     cout << "BACKLIGHT" << endl << BatchExpectPassMatrix::ExtractIntensity(outcome_back).second->to(torch::kCPU) << endl;
-}
+} // PASS
 
 int main() {
     std::cout << "current working dictionary: " << std::filesystem::current_path() << std::endl;

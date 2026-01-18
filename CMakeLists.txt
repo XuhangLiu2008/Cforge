@@ -18,7 +18,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libtorch/include/torch/csrc/api
 add_library(Cforge_lib
         Filaments.cpp
         BatchExpectPassMatrix.cpp
-        _debugUtilis.cpp)
+        _debugUtilis.cpp
+        Optimizer.cpp
+        Bitmap.cpp)
 
 target_link_libraries(Cforge_lib "${TORCH_LIBRARIES}")
 

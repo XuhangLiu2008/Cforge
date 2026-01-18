@@ -31,8 +31,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e846e30-b40d-4c4d-9f48-31dcd52c17b4" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/Bitmap.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Bitmap.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Optimizer.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Optimizer.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge.dir/test.cpp.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge.dir/test.cpp.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/Cforge" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Cforge" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/test.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,6 +113,11 @@
   }
 }</component>
   <component name="RunManager" selected="CMake 应用程序.Cforge">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Cforge" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Cforge" TARGET_NAME="Cforge" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Cforge" RUN_TARGET_NAME="Cforge">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -132,7 +145,7 @@
       <workItem from="1768702653562" duration="1746000" />
       <workItem from="1768711928688" duration="574000" />
       <workItem from="1768712660708" duration="8634000" />
-      <workItem from="1768745022533" duration="10000" />
+      <workItem from="1768745022533" duration="2931000" />
     </task>
     <servers />
   </component>
