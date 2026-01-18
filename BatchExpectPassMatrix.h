@@ -41,11 +41,18 @@ class BatchExpectPassMatrix {
         void Clear();
         void SetMatrix(const torch::Tensor* BatchFilaList);
         // a whole integer array of fila_index with shape batch_size * num_layers
-        static pair<torch::Tensor*, torch::Tensor*> ExtractIntensity(const torch::Tensor* BatchExpectPass) {
+        static pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> ExtractIntensity(const torch::Tensor* BatchExpectPass) {
             // BatchExpectPass: shape(batch_size * 3, num_variables)
-            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 1}); // E_b0
-            torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-1}); // E_fn
-            return make_pair(&left_output, &right_output);
+            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 2}).reshape({-1, 3}); // E_b0
+            torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-2}).reshape({-1, 3}); // E_fn
+            return make_pair(make_unique<torch::Tensor>(left_output), make_unique<torch::Tensor>(right_output));
+        };
+
+        static pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> ExtractIntensity(const unique_ptr<torch::Tensor> &BatchExpectPass) {
+            // BatchExpectPass: shape(batch_size * 3, num_variables)
+            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 2}).reshape({-1, 3}); // E_b0
+            torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-2}).reshape({-1, 3}); // E_fn
+            return make_pair(make_unique<torch::Tensor>(left_output), make_unique<torch::Tensor>(right_output));
         };
 
     private:

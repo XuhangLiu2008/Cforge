@@ -101,7 +101,6 @@ BatchExpectPassMatrix::BatchExpectPassMatrix(const int batch_size,
 }
 
 void BatchExpectPassMatrix::SetMatrix(const torch::Tensor* BatchFilaList) {
-
     this->fila_list = BatchFilaList->clone();
 
     for (int batch_index = 0;batch_index < batch_size;batch_index++)
@@ -115,6 +114,20 @@ void BatchExpectPassMatrix::SetMatrix(const torch::Tensor* BatchFilaList) {
 
             _updateLine(batch_index, layer_index, 'b');
         }
+
+    // for (int batch_index = 0;batch_index < batch_size*3;batch_index++) {
+    //     cout << "batch_index = " << batch_index << endl;
+    //     torch::Tensor slic = Matrix[batch_index].cpu();
+    //     for (int i = 0;i < num_variables;i++) {
+    //         for (int j = 0;j < num_variables;j++) {
+    //             cout << slic[i][j].item() << ' ';
+    //         }
+    //         cout << endl;
+    //     }
+    //     cout << endl;
+    // }
+
+    return ;
 }
 
 void BatchExpectPassMatrix::Clear() {
