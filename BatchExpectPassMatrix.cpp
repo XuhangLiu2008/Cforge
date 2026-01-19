@@ -193,12 +193,22 @@ void BatchExpectPassMatrix::Modify(const int batch_index, const int layer_index,
 
 }
 
-void BatchExpectPassMatrix::BatchModify(const int *layer_index, const int *target_fila) {
+void BatchExpectPassMatrix::BatchModify(const vector<int> *layer_index, const vector<int> *target_fila) {
     // layer_index : integer 1d array with length batch_size
     // target_fila : integer 1d array with length batch_size
 
     for (int batch_index = 0;batch_index < batch_size;batch_index++) {
-        if (layer_index[batch_index] == -1) continue;
-        Modify(batch_index, layer_index[batch_index], target_fila[batch_index]);
+        if ((*layer_index)[batch_index] == -1) continue;
+        Modify(batch_index, (*layer_index)[batch_index], (*target_fila)[batch_index]);
+    }
+}
+
+void BatchExpectPassMatrix::BatchModify(const unique_ptr<vector<int>> layer_index, const unique_ptr<vector<int>> target_fila) {
+    // layer_index : integer 1d array with length batch_size
+    // target_fila : integer 1d array with length batch_size
+
+    for (int batch_index = 0;batch_index < batch_size;batch_index++) {
+        if ((*layer_index)[batch_index] == -1) continue;
+        Modify(batch_index, (*layer_index)[batch_index], (*target_fila)[batch_index]);
     }
 }

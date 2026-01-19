@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_BUILD_TYPE "Debug")
 
-set(CMAKE_PREFIX_PATH /Users/xuhangliu/文件/编程/Cforge/libtorch)
+set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
 find_package(Torch REQUIRED)
 
@@ -20,7 +20,8 @@ add_library(Cforge_lib
         BatchExpectPassMatrix.cpp
         _debugUtilis.cpp
         Optimizer.cpp
-        Bitmap.cpp)
+        Bitmap.cpp
+        json.hpp)
 
 target_link_libraries(Cforge_lib "${TORCH_LIBRARIES}")
 

@@ -8,6 +8,7 @@
 #include <torch/torch.h>
 #include "Filaments.h"
 #include <memory>
+#include <vector>
 
 using namespace std;
 
@@ -36,21 +37,24 @@ class BatchExpectPassMatrix {
         unique_ptr<torch::Tensor> Solve_FRONTLIGHT();
 
         void Modify(int batch_index, int layer_index, int target_fila);
-        void BatchModify(const int* layer_index, const int* target_fila);
+
+        void BatchModify(const vector<int>* layer_index, const vector<int>* target_fila);
+        void BatchModify(const unique_ptr<vector<int>> layer_index, const unique_ptr<vector<int>> target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
+
         void Clear();
         void SetMatrix(const torch::Tensor* BatchFilaList);
         // a whole integer array of fila_index with shape batch_size * num_layers
         static pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> ExtractIntensity(const torch::Tensor* BatchExpectPass) {
             // BatchExpectPass: shape(batch_size * 3, num_variables)
-            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 2}).reshape({-1, 3}); // E_b0
+            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 1}).reshape({-1, 3}); // E_b0
             torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-2}).reshape({-1, 3}); // E_fn
             return make_pair(make_unique<torch::Tensor>(left_output), make_unique<torch::Tensor>(right_output));
         };
 
         static pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> ExtractIntensity(const unique_ptr<torch::Tensor> &BatchExpectPass) {
             // BatchExpectPass: shape(batch_size * 3, num_variables)
-            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 2}).reshape({-1, 3}); // E_b0
+            torch::Tensor left_output = BatchExpectPass->index({torch::indexing::Slice(), 1}).reshape({-1, 3}); // E_b0
             torch::Tensor right_output = BatchExpectPass->index({torch::indexing::Slice(), BatchExpectPass->size(1)-2}).reshape({-1, 3}); // E_fn
             return make_pair(make_unique<torch::Tensor>(left_output), make_unique<torch::Tensor>(right_output));
         };
