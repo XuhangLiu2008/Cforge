@@ -65,7 +65,12 @@ class Optimizer { // abstract base class
 
     protected:
 
-        virtual pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> _randDisturb();
+        virtual pair<
+        pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>>,
+        pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> >
+        _randDisturb();
+
+        virtual void _checkConfigs();
 
         unique_ptr<BatchExpectPassMatrix> core_mat_ptr;
 
@@ -84,21 +89,37 @@ class Optimizer { // abstract base class
 
 class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit rubbish
 
-    pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> _randDisturb() override;
+    pair<
+    pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>>,
+    pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> >
+    _randDisturb() override;
 
     torch::Tensor solve() override;
 
     private:
 
+        unique_ptr<torch::Tensor> _loss();
+
         int batch_size;
         int layer_size;
+
+        torch::Tensor t_f;
+        torch::Tensor t_b;
+        torch::Tensor w_ft;
+        torch::Tensor w_bt;
 
     /*
      config: {
         layer_size : int,
-        std_dev : float,
-        air_ratio : float,
-        rgb_weight : {float, float, float}
+        std_dev : float?,
+        air_ratio : float?,
+        base_extinc_coeff : float,
+        rgb_weight : {float, float, float}?,
+        sa_params : {
+            init_temperature : float,
+            min_temperature : float,
+            cooling_rate : float
+        }
      }
      */
 };

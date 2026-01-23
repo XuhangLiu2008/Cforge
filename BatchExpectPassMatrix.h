@@ -38,7 +38,7 @@ class BatchExpectPassMatrix {
 
         void Modify(int batch_index, int layer_index, int target_fila);
 
-        void BatchModify(const vector<int>* layer_index, const vector<int>* target_fila);
+        void BatchModify(const torch::Tensor* layer_index, const torch::Tensor* target_fila);
         void BatchModify(const unique_ptr<vector<int>> layer_index, const unique_ptr<vector<int>> target_fila);
         // [layer_index] * batch_size, [target_fila] * batch_size
 
