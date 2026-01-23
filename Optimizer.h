@@ -66,8 +66,8 @@ class Optimizer { // abstract base class
     protected:
 
         virtual pair<
-        pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>>,
-        pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> >
+            pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
+            pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
         _randDisturb();
 
         virtual void _checkConfigs();
@@ -90,8 +90,8 @@ class Optimizer { // abstract base class
 class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit rubbish
 
     pair<
-    pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>>,
-    pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> >
+        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
+        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
     _randDisturb() override;
 
     torch::Tensor solve() override;

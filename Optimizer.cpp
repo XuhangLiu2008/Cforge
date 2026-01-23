@@ -15,8 +15,8 @@ static mt19937 gen(rd());
 
 
 pair<
-pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>>,
-pair<unique_ptr<vector<int>>, unique_ptr<vector<int>>> >
+pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
+pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
 simpleSimulatedAnnealing::_randDisturb() {
     // layer_index and target_fila
     // can be directly put input core_mat.BatchModify
@@ -27,8 +27,10 @@ simpleSimulatedAnnealing::_randDisturb() {
     // >
 
 
-    vector<int> layer_index, target_fila;
-    vector<int> r_layer_index, r_target_fila; // the reversed transformation that can reverse all the modification
+    torch::Tensor layer_index = torch::zeros({batch_size}),
+                  target_fila = torch::zeros({batch_size});
+    torch::Tensor r_layer_index = torch::zeros({batch_size}),
+                  r_target_fila = torch::zeros({batch_size}); // the reversed transformation that can reverse all the modification
 
 
     int lowerlimit = 1;
@@ -56,8 +58,8 @@ simpleSimulatedAnnealing::_randDisturb() {
                  )) {
             pos = static_cast<int>(norm_dist(gen));
         }
-        layer_index.push_back(pos);
-        r_layer_index.push_back(pos);
+        layer_index[batch_index] = pos;
+        r_layer_index[batch_index] = pos;
     }
 
 
@@ -69,28 +71,28 @@ simpleSimulatedAnnealing::_randDisturb() {
 
     // random target_fila
     for (int batch_index = 0; batch_index < batch_size; batch_index++) {
-        int pos = layer_index[batch_index];
+        int pos = layer_index[batch_index].item<int>();
 
         if (core_mat_ptr->fila_list[batch_index][pos].item<int>() == 0) { // extend
-            target_fila.push_back(uni_int_dist(gen));
-            r_target_fila.push_back(core_mat_ptr->fila_list[batch_index][pos].item<int>());
+            target_fila[batch_index] = uni_int_dist(gen); // random filament
+            r_target_fila[batch_index] = core_mat_ptr->fila_list[batch_index][pos].item<int>(); // original filament
         }
         else if (core_mat_ptr->fila_list[batch_index][pos-1].item<int>() == 0 &&
                 core_mat_ptr->fila_list[batch_index][pos+1].item<int>() == 0) {
-            target_fila.push_back(uni_int_dist(gen)); // the only one in the list
-            r_target_fila.push_back(core_mat_ptr->fila_list[batch_index][pos].item<int>());
+            target_fila[batch_index] = uni_int_dist(gen); // random filament
+            r_target_fila[batch_index] = core_mat_ptr->fila_list[batch_index][pos].item<int>(); // original filament
         }
         else {
-            target_fila.push_back(uni_float_dist(gen) < air_ratio ? 0 : uni_int_dist(gen));
+            target_fila[batch_index] = uni_float_dist(gen) < air_ratio ? 0 : uni_int_dist(gen);
             // remove or modify
-            r_target_fila.push_back(core_mat_ptr->fila_list[batch_index][pos].item<int>());
+            r_target_fila[batch_index] = core_mat_ptr->fila_list[batch_index][pos].item<int>();
         }
 
     }
 
     return make_pair(
-        make_pair(make_unique<vector<int>>(layer_index), make_unique<vector<int>>(target_fila)),
-        make_pair(make_unique<vector<int>>(r_layer_index), make_unique<vector<int>>(r_target_fila))
+            make_pair(make_unique<torch::Tensor>(layer_index), make_unique<torch::Tensor>(target_fila)),
+            make_pair(make_unique<torch::Tensor>(r_layer_index), make_unique<torch::Tensor>(r_target_fila))
         );
 
 }
@@ -203,7 +205,7 @@ torch::Tensor simpleSimulatedAnnealing::solve() {  // that is freaking dam sit r
                                                std::move(pre_loss),
                                                std::move(cur_loss));
 
-        // torch::Tensor reversed_layer_index = reversed_modifier.first,
+        torch::Tensor reversed_layer_index = *reversed_modifier.first,
 
         cur_temperature *= cooling_rate;
     }
