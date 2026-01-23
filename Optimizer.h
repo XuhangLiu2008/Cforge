@@ -18,13 +18,14 @@ using namespace std;
 
 class Optimizer { // abstract base class
     public:
+        virtual ~Optimizer() = default;
 
         explicit Optimizer(FilaGroup* fila_group,
-            const nlohmann::json &configs,
-            const torch::Tensor* target_pic_FRONTLIGHT,
-            const torch::Tensor* target_pic_BACKLIGHT,
-            const torch::Tensor* weight_FRONTLIGHT,
-            const torch::Tensor* weight_BACKLIGHT) {
+                           const nlohmann::json &configs,
+                           const torch::Tensor* target_pic_FRONTLIGHT,
+                           const torch::Tensor* target_pic_BACKLIGHT,
+                           const torch::Tensor* weight_FRONTLIGHT,
+                           const torch::Tensor* weight_BACKLIGHT) {
 
             this->fila_group = fila_group;
             this->configs = configs;
@@ -60,8 +61,8 @@ class Optimizer { // abstract base class
         nlohmann::json configs;
         // depends
 
-        virtual torch::Tensor solve();
-        // BatchFilaLists returned
+        virtual pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve();
+        // <<FRONTLIGHT_intensity, BACKLIGHT_intensity> fila_lists> returned
 
     protected:
 
@@ -74,7 +75,9 @@ class Optimizer { // abstract base class
 
         unique_ptr<BatchExpectPassMatrix> core_mat_ptr;
 
-        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> _solveMat() {
+        // {FRONTLIGHT_intensity, BACKLIGHT_intensity}
+        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> _solveMat() const {
+
             pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor> > FRONTLIGHT_intensity_pair =
                     BatchExpectPassMatrix::ExtractIntensity(this->core_mat_ptr->Solve_FRONTLIGHT());
 
@@ -89,24 +92,60 @@ class Optimizer { // abstract base class
 
 class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit rubbish
 
-    pair<
-        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
-        pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
-    _randDisturb() override;
+    public:
+        simpleSimulatedAnnealing(FilaGroup *fila_group, const nlohmann::json &configs,
+            const torch::Tensor *target_pic_FRONTLIGHT, const torch::Tensor *target_pic_BACKLIGHT,
+            const torch::Tensor *weight_FRONTLIGHT, const torch::Tensor *weight_BACKLIGHT)
+            : Optimizer(
+                fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT, weight_FRONTLIGHT, weight_BACKLIGHT) {
+            _init();
+        }
 
-    torch::Tensor solve() override;
+        simpleSimulatedAnnealing(FilaGroup *fila_group, const nlohmann::json &configs,
+            const torch::Tensor *target_pic_FRONTLIGHT, const torch::Tensor *target_pic_BACKLIGHT)
+            : Optimizer(fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT) {
+            _init();
+        }
 
     private:
 
-        unique_ptr<torch::Tensor> _loss();
+        void _init() {
+            batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {H, W, 3}
+            layer_size = configs["layer_size"];
 
-        int batch_size;
-        int layer_size;
 
-        torch::Tensor t_f;
-        torch::Tensor t_b;
-        torch::Tensor w_ft;
-        torch::Tensor w_bt;
+            t_f = target_pic_FRONTLIGHT.to(torch::kMPS).flatten(0, 1); // {batch_size, 3}
+            t_b = target_pic_BACKLIGHT.to(torch::kMPS).flatten(0, 1);  // {batch_size, 3}
+            w_ft = weight_FRONTLIGHT.to(torch::kMPS).flatten(0, 1);    // {batch_size}
+            w_bt = weight_BACKLIGHT.to(torch::kMPS).flatten(0, 1);     // {batch_size}
+
+
+            // init core_mat
+
+            BatchExpectPassMatrix core_mat = BatchExpectPassMatrix(batch_size, layer_size, fila_group);
+            this->core_mat_ptr = make_unique<BatchExpectPassMatrix>(core_mat);
+        }
+
+        pair<
+            pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
+            pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
+        _randDisturb() override;
+
+        pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve() override;
+
+        static torch::Tensor _metropolis_mask(float cur_temperature,
+                                              const unique_ptr<torch::Tensor>& pre_loss,
+                                              const unique_ptr<torch::Tensor>& cur_loss);
+
+            unique_ptr<torch::Tensor> _loss();
+
+            int batch_size;
+            int layer_size;
+
+            torch::Tensor t_f;
+            torch::Tensor t_b;
+            torch::Tensor w_ft;
+            torch::Tensor w_bt;
 
     /*
      config: {

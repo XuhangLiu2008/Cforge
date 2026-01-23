@@ -40,10 +40,10 @@ simpleSimulatedAnnealing::_randDisturb() {
     // mean : (upperlimit-lowerlimit) / 2
     // default std_dev : (upperlimit-lowerlimit)/6
 
-    float std_dev =  (upperlimit-lowerlimit)/6;
+    float std_dev =  (upperlimit-lowerlimit) / 6.0;
     if (configs.contains("std_dev"))
         std_dev = configs["std_dev"];
-    normal_distribution<> norm_dist((upperlimit-lowerlimit) / 2, std_dev);
+    normal_distribution<> norm_dist((upperlimit-lowerlimit) / 2.0, std_dev);
 
     // random layer_index
     for (int batch_index = 0; batch_index < batch_size; batch_index++) {
@@ -130,9 +130,9 @@ unique_ptr<torch::Tensor> simpleSimulatedAnnealing::_loss() {
 
 }
 
-torch::Tensor _metropolis_mask(float cur_temperature,
-                               unique_ptr<torch::Tensor> pre_loss,
-                               unique_ptr<torch::Tensor> cur_loss) {
+torch::Tensor simpleSimulatedAnnealing::_metropolis_mask(float cur_temperature,
+                               const unique_ptr<torch::Tensor>& pre_loss,
+                               const unique_ptr<torch::Tensor>& cur_loss) {
 
     // the mask(dtype = bool) is used to be acted on the reversed modifier
     // so the mask is exactly the opposite of the normal criteria
@@ -144,26 +144,8 @@ torch::Tensor _metropolis_mask(float cur_temperature,
     return (*cur_loss > *pre_loss) * (torch::exp(-(*cur_loss - *pre_loss) / cur_temperature) < torch::rand_like(*pre_loss));
 }
 
-torch::Tensor simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
-
-    batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {H, W, 3}
-    layer_size = configs["layer_size"];
-
-
-
-    t_f = target_pic_FRONTLIGHT.to(torch::kMPS).flatten(0, 1); // {batch_size, 3}
-    t_b = target_pic_BACKLIGHT.to(torch::kMPS).flatten(0, 1);  // {batch_size, 3}
-    w_ft = weight_FRONTLIGHT.to(torch::kMPS).flatten(0, 1);    // {batch_size}
-    w_bt = weight_BACKLIGHT.to(torch::kMPS).flatten(0, 1);     // {batch_size}
-
-
-
-    // init core_mat
-
-    BatchExpectPassMatrix core_mat = BatchExpectPassMatrix(batch_size, layer_size, fila_group);
-    this->core_mat_ptr = make_unique<BatchExpectPassMatrix>(core_mat);
-
-
+pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>>
+simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
 
     // Set initial values
 
@@ -191,7 +173,6 @@ torch::Tensor simpleSimulatedAnnealing::solve() {  // that is freaking dam sit r
     float cur_temperature = init_temperature;
 
     while (cur_temperature > min_temperature) {
-
         auto bidirect_modifier = _randDisturb();
 
         auto modifier = std::move(bidirect_modifier.first);
@@ -201,13 +182,18 @@ torch::Tensor simpleSimulatedAnnealing::solve() {  // that is freaking dam sit r
 
         cur_loss = _loss();
 
-        torch::Tensor reversed_mask = _metropolis_mask(cur_temperature,
-                                               std::move(pre_loss),
-                                               std::move(cur_loss));
+        torch::Tensor reversed_mask = _metropolis_mask(cur_temperature, pre_loss, cur_loss);
 
-        torch::Tensor reversed_layer_index = *reversed_modifier.first,
+        torch::Tensor reversed_layer_index = *reversed_modifier.first;
+
+        reversed_layer_index.index_put_({reversed_mask}, -1);
+
+        core_mat_ptr -> BatchModify(make_unique<torch::Tensor>(reversed_layer_index),
+                                     std::move(reversed_modifier.second));
+        // reject according to metropolis
 
         cur_temperature *= cooling_rate;
     }
 
+    return make_pair(_solveMat(), make_unique<torch::Tensor>(core_mat_ptr -> fila_list));
 }
