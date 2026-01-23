@@ -31,10 +31,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e846e30-b40d-4c4d-9f48-31dcd52c17b4" name="更改" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Optimizer.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Optimizer.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Optimizer.h" beforeDir="false" afterPath="$PROJECT_DIR$/Optimizer.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,7 +138,7 @@
       <workItem from="1768711928688" duration="574000" />
       <workItem from="1768712660708" duration="8634000" />
       <workItem from="1768745022533" duration="42281000" />
-      <workItem from="1769060779563" duration="15161000" />
+      <workItem from="1769060779563" duration="16755000" />
     </task>
     <servers />
   </component>
