@@ -13,6 +13,8 @@ static random_device rd;
 static mt19937 gen(rd());
 
 
+void simpleSimulatedAnnealing::_checkConfig() {
+}
 
 pair<
 pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,
@@ -195,5 +197,5 @@ simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
         cur_temperature *= cooling_rate;
     }
 
-    return make_pair(_solveMat(), make_unique<torch::Tensor>(core_mat_ptr -> fila_list));
+    return make_pair(_solveMat(), make_unique<torch::Tensor>(core_mat_ptr -> fila_list.reshape(_o_sizes)));
 }

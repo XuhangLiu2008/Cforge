@@ -30,10 +30,18 @@ class Optimizer { // abstract base class
             this->fila_group = fila_group;
             this->configs = configs;
 
+            if (this->target_pic_BACKLIGHT.sizes() != this->target_pic_FRONTLIGHT.sizes() ||
+                this->target_pic_FRONTLIGHT.sizes() != this->weight_FRONTLIGHT.sizes() ||
+                this->weight_FRONTLIGHT.sizes() !=  this->weight_BACKLIGHT.sizes()) {
+                throw std::length_error("Inconsistent tensor sizes");
+            }
+
             this->target_pic_FRONTLIGHT = *target_pic_FRONTLIGHT;
             this->target_pic_BACKLIGHT = *target_pic_BACKLIGHT;
             this->weight_FRONTLIGHT = *weight_FRONTLIGHT;
             this->weight_BACKLIGHT = *weight_BACKLIGHT;
+
+            _checkConfigs();
         };
 
         explicit Optimizer(FilaGroup* fila_group,
@@ -44,10 +52,16 @@ class Optimizer { // abstract base class
             this->fila_group = fila_group;
             this->configs = configs;
 
+            if (this->target_pic_BACKLIGHT.sizes() != this->target_pic_FRONTLIGHT.sizes()) {
+                throw std::length_error("Inconsistent tensor sizes");
+            }
+
             this->target_pic_FRONTLIGHT = *target_pic_FRONTLIGHT;
             this->target_pic_BACKLIGHT = *target_pic_BACKLIGHT;
-            this->weight_FRONTLIGHT = torch::ones({this->target_pic_FRONTLIGHT.size(0), this->target_pic_FRONTLIGHT.size(1)});
-            this->weight_BACKLIGHT = torch::ones({this->target_pic_BACKLIGHT.size(0), this->target_pic_BACKLIGHT.size(1)});
+            this->weight_FRONTLIGHT = torch::ones_like(this->target_pic_FRONTLIGHT);
+            this->weight_BACKLIGHT = torch::ones_like(this->target_pic_BACKLIGHT);
+
+            _checkConfigs();
         };
 
         FilaGroup* fila_group;
@@ -109,9 +123,18 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
 
     private:
 
+        void _checkConfig() override;
+
         void _init() {
-            batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {H, W, 3}
+            batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {{possibly H, W}, 3}
             layer_size = configs["layer_size"];
+
+            _i_sizes = target_pic_FRONTLIGHT.sizes();
+            auto _tmp_sizes = _i_sizes.slice(0, _i_sizes.size() - 1);
+            vector<int64_t> _tmp_vec;
+            _tmp_vec.insert(_tmp_vec.end(), _tmp_sizes.begin(), _tmp_sizes.end());
+            _tmp_vec.push_back(layer_size);
+            _o_sizes = _tmp_vec; // should be {{possibly H, W}, L}
 
 
             t_f = target_pic_FRONTLIGHT.to(torch::kMPS).flatten(0, 1); // {batch_size, 3}
@@ -131,21 +154,24 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
             pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
         _randDisturb() override;
 
+        // <<FRONTLIGHT_intensity, BACKLIGHT_intensity>, fila_lists.reshape({_o_sizes})>
         pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve() override;
 
         static torch::Tensor _metropolis_mask(float cur_temperature,
                                               const unique_ptr<torch::Tensor>& pre_loss,
                                               const unique_ptr<torch::Tensor>& cur_loss);
 
-            unique_ptr<torch::Tensor> _loss();
+        unique_ptr<torch::Tensor> _loss();
 
-            int batch_size;
-            int layer_size;
+        int batch_size;
+        int layer_size;
+        at::IntArrayRef _i_sizes;
+        at::IntArrayRef _o_sizes;
 
-            torch::Tensor t_f;
-            torch::Tensor t_b;
-            torch::Tensor w_ft;
-            torch::Tensor w_bt;
+        torch::Tensor t_f;
+        torch::Tensor t_b;
+        torch::Tensor w_ft;
+        torch::Tensor w_bt;
 
     /*
      config: {
