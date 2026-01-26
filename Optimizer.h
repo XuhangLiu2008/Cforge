@@ -78,6 +78,9 @@ class Optimizer { // abstract base class
         virtual pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve();
         // <<FRONTLIGHT_intensity, BACKLIGHT_intensity> fila_lists> returned
 
+        virtual pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve(torch::Tensor initFilaList);
+        // <<FRONTLIGHT_intensity, BACKLIGHT_intensity> fila_lists> returned
+
     protected:
 
         virtual pair<
@@ -121,9 +124,15 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
             _init();
         }
 
+        // <<FRONTLIGHT_intensity, BACKLIGHT_intensity>, fila_lists.reshape({_o_sizes})>
+        pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve() override;
+
+        // <<FRONTLIGHT_intensity, BACKLIGHT_intensity>, fila_lists.reshape({_o_sizes})>
+        pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve(torch::Tensor initFilaList) override;
+
     private:
 
-        void _checkConfig() override;
+        void _checkConfigs() override;
 
         void _init() {
             batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {{possibly H, W}, 3}
@@ -155,7 +164,7 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
         _randDisturb() override;
 
         // <<FRONTLIGHT_intensity, BACKLIGHT_intensity>, fila_lists.reshape({_o_sizes})>
-        pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve() override;
+        pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> _solve_after_init();
 
         static torch::Tensor _metropolis_mask(float cur_temperature,
                                               const unique_ptr<torch::Tensor>& pre_loss,

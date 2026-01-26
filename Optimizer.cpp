@@ -14,7 +14,7 @@ static mt19937 gen(rd());
 
 
 
-void simpleSimulatedAnnealing::_checkConfig() {
+void simpleSimulatedAnnealing::_checkConfigs() {
     /*
     config: {
        layer_size : int,
@@ -186,21 +186,7 @@ torch::Tensor simpleSimulatedAnnealing::_metropolis_mask(float cur_temperature, 
 
 
 pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>>
-simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
-
-    // Set initial values
-
-    uniform_int_distribution<> uni_int_dist(1, fila_group->num_fila-1);
-    // -1, except for AIR
-
-    torch::Tensor BatchFilaList = torch::zeros({batch_size, layer_size}, torch::kUInt8);
-    for (int batch_index = 0 ; batch_index < batch_size; batch_index++) {
-        // init in the middle
-        BatchFilaList[batch_index][(layer_size - 1) / 2] = uni_int_dist(gen);
-    }
-
-    core_mat_ptr->SetMatrix(&BatchFilaList);
-
+simpleSimulatedAnnealing::_solve_after_init() {
 
 
     // SA
@@ -237,4 +223,39 @@ simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
     }
 
     return make_pair(_solveMat(), make_unique<torch::Tensor>(core_mat_ptr -> fila_list.reshape(_o_sizes)));
+}
+
+
+
+pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>>
+simpleSimulatedAnnealing::solve() {  // that is freaking dam sit rubbish
+
+    // Set initial values
+
+    uniform_int_distribution<> uni_int_dist(1, fila_group->num_fila-1);
+    // -1, except for AIR
+
+    torch::Tensor BatchFilaList = torch::zeros({batch_size, layer_size}, torch::kUInt8);
+    for (int batch_index = 0 ; batch_index < batch_size; batch_index++) {
+        // init in the middle
+        BatchFilaList[batch_index][(layer_size - 1) / 2] = uni_int_dist(gen);
+    }
+
+    core_mat_ptr->SetMatrix(&BatchFilaList);
+
+
+    return _solve_after_init();
+}
+
+
+
+pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>>
+simpleSimulatedAnnealing::solve(torch::Tensor initFilaList) {
+
+    // Set initial value
+
+    core_mat_ptr->SetMatrix(&initFilaList);
+
+
+    return _solve_after_init();
 }
