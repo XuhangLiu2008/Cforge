@@ -6,8 +6,6 @@
 #define CFORGE_PHOTOPROCESS_H
 
 
-class photoProcess {
-};
 
 
 #endif //CFORGE_PHOTOPROCESS_H

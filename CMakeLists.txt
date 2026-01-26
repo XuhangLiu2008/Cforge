@@ -20,7 +20,6 @@ add_library(Cforge_lib
         BatchExpectPassMatrix.cpp
         _debugUtilis.cpp
         Optimizer.cpp
-        Bitmap.cpp
         photoProcess.cpp
         generate3D.cpp
         json.hpp)
