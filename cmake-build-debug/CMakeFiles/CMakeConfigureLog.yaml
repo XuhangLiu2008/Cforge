@@ -3282,3 +3282,311 @@ events:
         - "/Network/Library/Frameworks"
         - "/System/Library/Frameworks"
 ...
+
+---
+events:
+  -
+    kind: "find_package-v1"
+    backtrace:
+      - "CMakeLists.txt:10 (find_package)"
+    name: "Torch"
+    configs:
+      -
+        filename: "TorchConfig.cmake"
+        kind: "cmake"
+      -
+        filename: "torch-config.cmake"
+        kind: "cmake"
+    version_request:
+      exact: false
+    settings:
+      required: "required_explicit"
+      quiet: false
+      global: false
+      policy_scope: true
+      bypass_provider: false
+      names:
+        - "Torch"
+      path_suffixes:
+        - ""
+      paths:
+        CMAKE_FIND_USE_CMAKE_PATH: true
+        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+        CMAKE_FIND_USE_INSTALL_PREFIX: true
+        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
+        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
+        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
+        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
+    candidates:
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/libtorch/share/cmake/Torch/TorchConfig.cmake"
+        mode: "none?"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/libtorch/share/cmake/Torch/torch-config.cmake"
+        mode: "none?"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/cmake-build-debug/CMakeFiles/pkgRedirects/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/cmake-build-debug/CMakeFiles/pkgRedirects/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/cmake/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/cmake/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/condabin/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/anaconda3/condabin/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Frameworks/Python.framework/Versions/3.12/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Frameworks/Python.framework/Versions/3.12/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/System/Cryptexes/App/usr/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/System/Cryptexes/App/usr/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Apple/usr/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Apple/usr/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/VMware Fusion.app/Contents/Public/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/VMware Fusion.app/Contents/Public/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/opt/homebrew/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/opt/homebrew/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/CLion.app/Contents/bin/ninja/mac/aarch64/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/CLion.app/Contents/bin/ninja/mac/aarch64/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/CLion.app/Contents/bin/cmake/mac/aarch64/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/CLion.app/Contents/bin/cmake/mac/aarch64/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/opt/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/opt/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/System/Library/Frameworks/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/System/Library/Frameworks/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/Applications/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Users/xuhangliu/Applications/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Applications/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Applications/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Applications/TorchConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/Applications/Xcode.app/Contents/Developer/Applications/torch-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+    found: null
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge"
+      ENV{PATH}:
+        - "/Users/xuhangliu/anaconda3/bin"
+        - "/Users/xuhangliu/anaconda3/condabin"
+        - "/Library/Frameworks/Python.framework/Versions/3.12/bin"
+        - "/usr/local/bin"
+        - "/System/Cryptexes/App/usr/bin"
+        - "/usr/bin"
+        - "/bin"
+        - "/usr/sbin"
+        - "/sbin"
+        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
+        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
+        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
+        - "/Library/Apple/usr/bin"
+        - "/Applications/VMware Fusion.app/Contents/Public"
+        - "/opt/homebrew/bin"
+        - "/Applications/CLion.app/Contents/bin/ninja/mac/aarch64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr"
+        - "/opt/homebrew"
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/Applications/CLion.app/Contents/bin/cmake/mac/aarch64"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+        - "/sw"
+        - "/opt/local"
+      CMAKE_SYSTEM_FRAMEWORK_PATH:
+        - "~/Library/Frameworks"
+        - "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Library/Frameworks"
+        - "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Network/Library/Frameworks"
+        - "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks"
+        - "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks"
+        - "/Applications/Xcode.app/Contents/Developer/Library/Frameworks"
+        - "/Library/Frameworks"
+        - "/Network/Library/Frameworks"
+        - "/System/Library/Frameworks"
+...
