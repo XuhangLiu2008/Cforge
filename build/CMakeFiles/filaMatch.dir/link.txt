@@ -1,0 +1,2 @@
+/usr/bin/ar qc lib/libfilaMatch.a CMakeFiles/filaMatch.dir/filaMatch/BatchExpectPassMatrix.cpp.o CMakeFiles/filaMatch.dir/filaMatch/Filaments.cpp.o CMakeFiles/filaMatch.dir/filaMatch/Optimizer.cpp.o CMakeFiles/filaMatch.dir/generate3D.cpp.o CMakeFiles/filaMatch.dir/photoProcess.cpp.o CMakeFiles/filaMatch.dir/_debugUtilis.cpp.o
+/usr/bin/ranlib lib/libfilaMatch.a

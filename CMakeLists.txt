@@ -20,8 +20,6 @@ add_library(Cforge_lib
         BatchExpectPassMatrix.cpp
         _debugUtilis.cpp
         Optimizer.cpp
-        photoProcess.cpp
-        generate3D.cpp
         json.hpp)
 
 target_link_libraries(Cforge_lib "${TORCH_LIBRARIES}")

@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="BackendCodeEditorMiscSettings">
-    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="3" type="long" />
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="7" type="long" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
@@ -31,13 +31,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e846e30-b40d-4c4d-9f48-31dcd52c17b4" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/generate3D.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/generate3D.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photoProcess.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photoProcess.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeCache.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeConfigureLog.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/CMakeConfigureLog.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge.dir/test.cpp.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge.dir/test.cpp.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge_lib.dir/BatchExpectPassMatrix.cpp.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Cforge_lib.dir/BatchExpectPassMatrix.cpp.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/Cforge" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Cforge" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Testing/Temporary/LastTest.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/libCforge_lib.a" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/libCforge_lib.a" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate3D.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate3D.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/photoProcess.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/photoProcess.h" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,7 +98,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "C/C++ 文件.test.cpp.executor": "Debug",
-    "CMake 应用程序.Cforge.executor": "Debug",
+    "CMake 应用程序.Cforge.executor": "Run",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.RadMigrateCodeStyle": "true",

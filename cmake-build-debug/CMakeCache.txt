@@ -46,7 +46,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //C compiler
-CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc
+CMAKE_C_COMPILER:STRING=/usr/bin/cc
 
 //Flags used by the C compiler during all build types.
 CMAKE_C_FLAGS:STRING=
@@ -246,6 +246,9 @@ kineto_LIBRARY:FILEPATH=/Users/xuhangliu/文件/编程/Cforge/libtorch/lib/libki
 //The directory containing a CMake configuration file for nlohmann_json.
 nlohmann_json_DIR:PATH=nlohmann_json_DIR-NOTFOUND
 
+//The directory containing a CMake configuration file for pybind11.
+pybind11_DIR:PATH=pybind11_DIR-NOTFOUND
+
 
 ########################
 # INTERNAL cache entries
@@ -388,6 +391,24 @@ CMAKE_TAPI-ADVANCED:INTERNAL=1
 CMAKE_UNAME:INTERNAL=/usr/bin/uname
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
+//Details about finding Python
+FIND_PACKAGE_MESSAGE_DETAILS_Python:INTERNAL=[/Users/xuhangliu/anaconda3/include/python3.11][/Users/xuhangliu/anaconda3/lib/libpython3.11.dylib][found components: Development Development.Module Development.Embed ][v3.11.5()]
 //Details about finding Torch
 FIND_PACKAGE_MESSAGE_DETAILS_Torch:INTERNAL=[/Users/xuhangliu/文件/编程/Cforge/libtorch/lib/libtorch.dylib][/Users/xuhangliu/文件/编程/Cforge/libtorch/include;/Users/xuhangliu/文件/编程/Cforge/libtorch/include/torch/csrc/api/include][v()]
+//Path to a program.
+_Python_CONFIG:INTERNAL=/Users/xuhangliu/anaconda3/bin/python3.11-config
+//Compiler reason failure
+_Python_Compiler_REASON_FAILURE:INTERNAL=
+_Python_DEVELOPMENT_EMBED_SIGNATURE:INTERNAL=f600b139e9bdb17187825407463657ce
+_Python_DEVELOPMENT_MODULE_SIGNATURE:INTERNAL=0ed8c17d9c09232f6ec2a14f2dd32496
+//Development reason failure
+_Python_Development_REASON_FAILURE:INTERNAL=
+//Path to a file.
+_Python_INCLUDE_DIR:INTERNAL=/Users/xuhangliu/anaconda3/include/python3.11
+//Interpreter reason failure
+_Python_Interpreter_REASON_FAILURE:INTERNAL=
+//Path to a library.
+_Python_LIBRARY_RELEASE:INTERNAL=/Users/xuhangliu/anaconda3/lib/libpython3.11.dylib
+//NumPy reason failure
+_Python_NumPy_REASON_FAILURE:INTERNAL=
 
