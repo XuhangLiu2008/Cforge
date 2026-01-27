@@ -7,16 +7,19 @@ set(CMAKE_BUILD_TYPE "Debug")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libtorch/share/cmake/Torch")
-
+set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # torch
-find_package(Torch REQUIRED
-        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/libtorch/share/cmake/Torch" # where TorchConfigs.cmake is
-)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libtorch")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/libtorch/include/torch/csrc/api/include")
+set(TORCH_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/third_party/libtorch")
+set(Torch_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libtorch/share/cmake/Torch)
 
+find_package(Torch REQUIRED)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party/libtorch")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party/libtorch/include/torch/csrc/api/include")
+
+
+message(STATUS "TORCH_INSTALL_PREFIX: ${TORCH_INSTALL_PREFIX}")
+message(STATUS "TORCH_LIBRARY_DIR: ${TORCH_LIBRARY_DIR}")
 
 # Cforge_lib
 add_library(Cforge_lib
@@ -25,7 +28,7 @@ add_library(Cforge_lib
         csrc/_debugUtilis.cpp
         csrc/filaMatch/Optimizer.cpp
         third_party/json.hpp)
-target_link_libraries(Cforge_lib "${TORCH_LIBRARIES}")
+target_link_libraries(Cforge_lib ${TORCH_LIBRARIES})
 
 
 # executable
