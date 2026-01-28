@@ -1,7 +1,8 @@
 {
 	"InstallScripts" : 
 	[
-		"/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/cmake-build-debug/cmake_install.cmake"
+		"/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/cmake-build-debug/cmake_install.cmake",
+		"/Users/xuhangliu/\u6587\u4ef6/\u7f16\u7a0b/Cforge/cmake-build-debug/third_party/pybind11/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

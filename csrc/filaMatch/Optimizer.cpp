@@ -14,40 +14,8 @@ static mt19937 gen(rd());
 
 
 
-void simpleSimulatedAnnealing::_checkConfigs() {
-    /*
-    config: {
-       layer_size : int,
-       std_dev : float?,
-       air_ratio : float?,
-       base_extinc_coeff : float,
-       rgb_weight : {float, float, float}?,
-       sa_params : {
-           init_temperature : float,
-           min_temperature : float,
-           cooling_rate : float
-       }
-    }
-    */
-    if (configs.contains("layer_size") && configs["layer_size"].is_number_integer() &&
-        (configs.contains("std_dev") ? configs["std_dev"].is_number() : true) &&
-        (configs.contains("air_ratio") ? configs["air_ratio"].is_number() : true) &&
-        configs.contains("layer_size") && configs["layer_size"].is_number() &&
-        configs.contains("base_extinc_coeff") && configs["base_extinc_coeff"].is_number() &&
-        (configs.contains("rgb_weight") ? configs["rgb_weight"].is_array() : true) &&
-        configs.contains("sa_params") &&
-        configs["sa_params"].contains("init_temperature") && configs["sa_params"]["init_temperature"].is_number() &&
-        configs["sa_params"].contains("min_temperature") && configs["sa_params"]["min_temperature"].is_number() &&
-        configs["sa_params"].contains("cooling_rate") && configs["sa_params"]["cooling_rate"].is_number()
-        ) {
-
-            return ;
-    }
-    else throw runtime_error("configs contains wrong type");
-
-}
-
-
+// TODO: complete the default config for subclasses
+nlohmann::json simpleSimulatedAnnealing::_sub_default_config = {};
 
 pair<
 pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>>,

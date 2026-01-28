@@ -24,7 +24,8 @@ class Optimizer { // abstract base class
                            const torch::Tensor* target_pic_FRONTLIGHT,
                            const torch::Tensor* target_pic_BACKLIGHT,
                            const torch::Tensor* weight_FRONTLIGHT,
-                           const torch::Tensor* weight_BACKLIGHT) {
+                           const torch::Tensor* weight_BACKLIGHT,
+                           const nlohmann::json& _default_config) {
 
             this->fila_group = fila_group;
             this->configs = configs;
@@ -40,13 +41,16 @@ class Optimizer { // abstract base class
             this->weight_FRONTLIGHT = *weight_FRONTLIGHT;
             this->weight_BACKLIGHT = *weight_BACKLIGHT;
 
-            _checkConfigs();
+            this->_default_config = _default_config;
+            _checkConfigs(_default_config, this->configs);
+            _completeConfigs();
         };
 
         explicit Optimizer(FilaGroup* fila_group,
             const nlohmann::json &configs,
             const torch::Tensor* target_pic_FRONTLIGHT,
-            const torch::Tensor* target_pic_BACKLIGHT) {
+            const torch::Tensor* target_pic_BACKLIGHT,
+            const nlohmann::json& _default_config) {
 
             this->fila_group = fila_group;
             this->configs = configs;
@@ -60,7 +64,9 @@ class Optimizer { // abstract base class
             this->weight_FRONTLIGHT = torch::ones_like(this->target_pic_FRONTLIGHT);
             this->weight_BACKLIGHT = torch::ones_like(this->target_pic_BACKLIGHT);
 
-            _checkConfigs();
+            this->_default_config = _default_config;
+            _checkConfigs(_default_config, this->configs);
+            _completeConfigs();
         };
 
         FilaGroup* fila_group;
@@ -87,7 +93,74 @@ class Optimizer { // abstract base class
             pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> >
         _randDisturb();
 
-        virtual void _checkConfigs();
+
+        nlohmann::json _default_config;
+
+        static bool _checkConfigs(nlohmann::json _default, nlohmann::json input) {
+
+            if (input.is_array() && _default.is_array()) {
+
+                if (input.size() != _default.size()) return false;
+
+                for (int i = 0; auto& element : input) {
+
+                    if (element.is_null()) continue;
+
+                    if (element.type() != _default[i].type()) return false;
+
+                    if ((element.is_array() || element.is_object()) &&
+                        !_checkConfigs(_default[i], element)) return false;
+                    i++;
+                }
+                return true;
+            }
+            else if (input.is_object() && _default.is_object()) {
+
+                for (auto it = input.begin(); it != input.end(); ++it) {
+
+                    if (it.value().is_null()) continue;
+
+                    if (!_default.contains(it.key()) || // avoid adding nul value to default
+                        it.value().type() != _default[it.key()].type()) return false;
+
+                    if ((it.value().is_array() || it.value().is_object()) &&
+                        !_checkConfigs(_default[it.key()], it.value())) return false;
+                }
+                return true;
+            }
+            else return false;
+        }
+
+        static void _complete(nlohmann::json *_copied_default, nlohmann::json input) {
+            // directly modify the _copied_default
+
+
+            if (input.is_object()) {
+                for (auto it = input.begin(); it != input.end(); ++it) {
+                    if (it.value().is_null()) continue;
+                    if (it.value().is_array() || it.value().is_object())
+                        _complete(&((*_copied_default)[it.key()]), it.value());
+                    else
+                        (*_copied_default)[it.key()] = it.value();
+                }
+            }
+            else {
+                for (int i = 0; auto& element : input) {
+                    if (element.is_null()) continue;
+                    if (element.is_array() || element.is_object())
+                        _complete(&((*_copied_default)[i]), element);
+                    else
+                        (*_copied_default)[i] = element;
+                }
+            }
+        }
+
+        void _completeConfigs() {
+            if (! _checkConfigs(_default_config, this->configs))
+                throw std::format_error("Inconsistent configs");
+            this->completedConfig = _default_config;
+            _complete(&completedConfig, configs);
+        }
 
         unique_ptr<BatchExpectPassMatrix> core_mat_ptr;
 
@@ -102,6 +175,8 @@ class Optimizer { // abstract base class
 
             return make_pair(std::move(FRONTLIGHT_intensity_pair.second), std::move(BACKLIGHT_intensity_pair.second));
         }
+
+        nlohmann::json completedConfig;
 };
 
 // variations
@@ -113,13 +188,16 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
             const torch::Tensor *target_pic_FRONTLIGHT, const torch::Tensor *target_pic_BACKLIGHT,
             const torch::Tensor *weight_FRONTLIGHT, const torch::Tensor *weight_BACKLIGHT)
             : Optimizer(
-                fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT, weight_FRONTLIGHT, weight_BACKLIGHT) {
+                fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT, weight_FRONTLIGHT, weight_BACKLIGHT,
+                this->_sub_default_config) {
             _init();
         }
 
         simpleSimulatedAnnealing(FilaGroup *fila_group, const nlohmann::json &configs,
             const torch::Tensor *target_pic_FRONTLIGHT, const torch::Tensor *target_pic_BACKLIGHT)
-            : Optimizer(fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT) {
+            : Optimizer(
+                fila_group, configs, target_pic_FRONTLIGHT, target_pic_BACKLIGHT,
+                this->_sub_default_config) {
             _init();
         }
 
@@ -130,8 +208,6 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
         pair<pair<unique_ptr<torch::Tensor>, unique_ptr<torch::Tensor>> , unique_ptr<torch::Tensor>> solve(torch::Tensor initFilaList) override;
 
     private:
-
-        void _checkConfigs() override;
 
         void _init() {
             batch_size = target_pic_FRONTLIGHT.numel() / 3; // sizes = {{possibly H, W}, 3}
@@ -181,13 +257,16 @@ class simpleSimulatedAnnealing : public Optimizer{ // that is freaking dam sit r
         torch::Tensor w_ft;
         torch::Tensor w_bt;
 
+        // TODO: complete the default config
+        static nlohmann::json _sub_default_config;
+
     /*
      config: {
         layer_size : int,
-        std_dev : float?,
-        air_ratio : float?,
+        std_dev : float,
+        air_ratio : float,
         base_extinc_coeff : float,
-        rgb_weight : {float, float, float}?,
+        rgb_weight : {float, float, float},
         sa_params : {
             init_temperature : float,
             min_temperature : float,

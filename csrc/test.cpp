@@ -4,6 +4,7 @@
 #include <filesystem>
 #include "filaMatch/BatchExpectPassMatrix.h"
 #include "_debugUtilis.h"
+#include "../third_party/json.hpp"
 
 using namespace std;
 
@@ -98,12 +99,72 @@ int _test_main_BatchExpectPassMatrix() {
 
     cout << "FRONTLIGHT" << endl << BatchExpectPassMatrix::ExtractIntensity(outcome_front).second->to(torch::kCPU) << endl;
     cout << "BACKLIGHT" << endl << BatchExpectPassMatrix::ExtractIntensity(outcome_back).second->to(torch::kCPU) << endl;
+
+    return 0;
 } // PASS
+
+
+bool _t_checkConfigs(nlohmann::json _default, nlohmann::json input) {
+
+    if (input.is_array() && _default.is_array()) {
+
+        if (input.size() != _default.size()) return false;
+
+        for (int i = 0; auto& element : input) {
+
+            if (element.is_null()) continue;
+
+            if (element.type() != _default[i].type()) return false;
+
+            if ((element.is_array() || element.is_object()) &&
+                !_t_checkConfigs(_default[i], element)) return false;
+            i++;
+        }
+        return true;
+    }
+    else if (input.is_object() && _default.is_object()) {
+
+        for (auto it = input.begin(); it != input.end(); ++it) {
+
+            if (it.value().is_null()) continue;
+
+            if (!_default.contains(it.key()) || // avoid adding nul value to default
+                it.value().type() != _default[it.key()].type()) return false;
+
+            if ((it.value().is_array() || it.value().is_object()) &&
+                !_t_checkConfigs(_default[it.key()], it.value())) return false;
+        }
+        return true;
+    }
+    else return false;
+}
+
+void _complete(nlohmann::json* _copied_default, nlohmann::json input) {
+    if (input.is_object()) {
+        for (auto it = input.begin(); it != input.end(); ++it) {
+            if (it.value().is_null()) continue;
+            if (it.value().is_array() || it.value().is_object())
+                _complete(&((*_copied_default)[it.key()]), it.value());
+            else
+                (*_copied_default)[it.key()] = it.value();
+        }
+    }
+    else {
+        for (int i = 0; auto& element : input) {
+            if (element.is_null()) continue;
+            if (element.is_array() || element.is_object())
+                _complete(&((*_copied_default)[i]), element);
+            else
+                (*_copied_default)[i] = element;
+        }
+    }
+}
+
 
 int main() {
     std::cout << "current working dictionary: " << std::filesystem::current_path() << std::endl;
     cout << "START SUCCESSFULLY." << endl;
-    _test_main_BatchExpectPassMatrix();
+
 
     return 0;
 }
