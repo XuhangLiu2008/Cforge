@@ -24,18 +24,16 @@ add_subdirectory(third_party/pybind11)
 
 # Cforge_lib
 add_library(Cforge_lib
-        csrc/filaMatch/Filaments.cpp
-        csrc/filaMatch/BatchExpectPassMatrix.cpp
-        csrc/_debugUtilis.cpp
-        csrc/filaMatch/Optimizer.cpp
-        third_party/json.hpp)
+        third_party/json.hpp
+        csrc/FilaMatch/Filament.cpp
+        csrc/FilaMatch/Filament.h)
 target_link_libraries(Cforge_lib ${TORCH_LIBRARIES})
 
 
 # executable
 add_executable(Cforge
-        csrc/main.cpp
-        csrc/test.cpp)
+        csrc/test.cpp
+        csrc/main.cpp)
 
 target_link_libraries(Cforge Cforge_lib)
 
