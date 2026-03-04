@@ -54,7 +54,7 @@ class Filament:
         return T_m, R_m
 
     @staticmethod
-    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor = 1.0):
+    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor):
             T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
             T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, Filament.k1, Filament.k2)
             return enlarge_factor * T_m, enlarge_factor * R_m
@@ -96,7 +96,7 @@ class Filament:
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
-        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, enlarge_factor):
+        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, enlarge_factor_r, enlarge_factor_g, enlarge_factor_b):
             # thickness here should be an array with 3 identical copies
             # to fit all coeffs together
             length = len(thickness) // 3
@@ -106,7 +106,7 @@ class Filament:
 
             res = np.zeros((length, 3))
             for i in range(length):
-                res[i], _ = Filament.RatesInAir(thickness[i], K, S, enlarge_factor)
+                res[i], _ = Filament.RatesInAir(thickness[i], K, S, np.array([enlarge_factor_r, enlarge_factor_g, enlarge_factor_b], dtype=float))
 
             return res.T.flatten()
 
@@ -122,12 +122,12 @@ class Filament:
             g_list.append(intensity[1])
             b_list.append(intensity[2])
 
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [10, 10, 10, 10, 10, 10, np.inf])
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5]
+        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                  [10, 10, 10, 10, 10, 10, np.inf, np.inf, np.inf])
         # constrain params to physically meaningful ranges
 
-        MAXFEV = int(5e5)
+        MAXFEV = int(1e6)
 
         thickness_arr = np.asarray(thickness_list * 3, dtype=float)
         target_arr = np.asarray(r_list + g_list + b_list, dtype=float)
@@ -135,13 +135,16 @@ class Filament:
         coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
 
         r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6]])
-        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[6]])
-        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[6]])
+        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[7]])
+        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[8]])
 
         self.absorb_coeff = np.array([r_coefficient[0], g_coefficient[0], b_coefficient[0]])
         self.scatter_coeff = np.array([r_coefficient[1], g_coefficient[1], b_coefficient[1]])
+        enlarge_factor = np.array([r_coefficient[2], g_coefficient[2], b_coefficient[2]])
+
         if self.icon_colour is None:
-            self.icon_colour = np.uint8(sum(Filament.RatesInAir(1.75/2, self.absorb_coeff, self.scatter_coeff)) * 255)
+            tmp = (Filament.RatesInAir(100, self.absorb_coeff, self.scatter_coeff, 1))[1]
+            self.icon_colour = np.uint8(tmp / np.max(tmp) * 255)
 
         print("R coef:", r_coefficient)
         print("G coef:", g_coefficient)
@@ -160,7 +163,7 @@ class Filament:
             rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
             
             for i, thickness in enumerate(d_data):
-                rgb_data[i], _ = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, coefficient[6])
+                rgb_data[i], _ = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, enlarge_factor)
 
             r_data = rgb_data[:, 0]
             g_data = rgb_data[:, 1]
@@ -172,6 +175,7 @@ class Filament:
             plt.plot(d_data, r_data, 'r-', label='R fit')
             plt.plot(d_data, g_data, 'g-', label='G fit')
             plt.plot(d_data, b_data, 'b-', label='B fit')
+            plt.grid(color=self.icon_colour / 255)
 
             plt.xlabel('Thickness (mm)')
             plt.ylabel('Penetrate Rate')
