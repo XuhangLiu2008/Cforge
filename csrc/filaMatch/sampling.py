@@ -97,34 +97,31 @@ def sampling(image_path):
 
     return array
 
-class virtualization_sampling:
 
-    @staticmethod
-    def sampled(SampledArray: list):
-        # Expect 16 samples arranged conceptually as a 4x4 grid
-        grid_size = 4
+def display_sample(SampledArray: list):
 
-        fig, ax = plt.subplots()
+    # Expect 16 samples arranged conceptually as a 4x4 grid
+    grid_size = 4
 
-        for idx, item in enumerate(SampledArray):
-            _, rgb = item
-            r, g, b = rgb
+    fig, ax = plt.subplots()
 
-            row = idx // grid_size
-            col = idx % grid_size
+    for idx, item in enumerate(SampledArray):
+        _, rgb = item
+        r, g, b = rgb
 
-            # Normalize RGB to [0,1] for matplotlib
-            color = (r / 255.0, g / 255.0, b / 255.0)
+        row = idx // grid_size
+        col = idx % grid_size
 
-            rect = plt.Rectangle((col, grid_size - 1 - row), 1, 1, color=color)
-            ax.add_patch(rect)
+        # Normalize RGB to [0,1] for matplotlib
+        color = (r / 255.0, g / 255.0, b / 255.0)
 
-        ax.set_xlim(0, grid_size)
-        ax.set_ylim(0, grid_size)
-        ax.set_aspect('equal')
-        ax.axis('off')
+        rect = plt.Rectangle((col, grid_size - 1 - row), 1, 1, color=color)
+        ax.add_patch(rect)
 
-        plt.show()
+    ax.set_xlim(0, grid_size)
+    ax.set_ylim(0, grid_size)
+    ax.set_aspect('equal')
+    ax.axis('off')
 
 if __name__ == "__main__":
     image_path = "csrc/FilaMatch/filament02.png"
@@ -134,4 +131,4 @@ if __name__ == "__main__":
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
 
-    virtualization_sampling.sampled(array)
+    display_sample(array)

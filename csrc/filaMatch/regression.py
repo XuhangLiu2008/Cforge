@@ -3,6 +3,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
+import sampling
+
+
 class Filament:
 
     refra_index = 1.65
@@ -72,6 +75,11 @@ class Filament:
 
         self.absorb_coeff = absorb_coeff
         self.scatter_coeff = scatter_coeff
+
+        self.samples = []
+
+    def sampling(self, image_path):
+        self.samples = sampling.sampling(image_path)
     
     @staticmethod
     def inverseGamma(x):
@@ -95,7 +103,7 @@ class Filament:
                          Filament.inverseGamma(color[1]) / Filament.G_temp2coff[color_temp],
                          Filament.inverseGamma(color[2]) / Filament.B_temp2coff[color_temp]])
 
-    def calculateCoefficients(self, samples, shown = False, color_temp = 4000, gamma = 2.4):
+    def calculateCoefficients(self, shown = False, color_temp = 4000, gamma = 2.4):
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
@@ -118,7 +126,7 @@ class Filament:
         g_list = []
         b_list = []
 
-        for sample in samples:
+        for sample in self.samples:
             thickness_list.append(sample[0])
             intensity = Filament.RGB2RelativeIntensity(sample[1], gamma=gamma, color_temp=color_temp)
             r_list.append(intensity[0])
@@ -156,17 +164,17 @@ class Filament:
         print("scatter coeff:", self.scatter_coeff)
         print("icon colour:", self.icon_colour)
 
-        if shown :
+        def display_results_plot():
             d_sample = np.asarray(thickness_list, dtype=float)
-            r_sample = np.asarray(r_list, dtype=float)
-            g_sample = np.asarray(g_list, dtype=float)
-            b_sample = np.asarray(b_list, dtype=float)
+            r_sample = np.asarray(r_list, dtype=float) / enlarge_factor[0]
+            g_sample = np.asarray(g_list, dtype=float) / enlarge_factor[1]
+            b_sample = np.asarray(b_list, dtype=float) / enlarge_factor[2]
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
             rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
             
             for i, thickness in enumerate(d_data):
-                rgb_data[i], _ = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, enlarge_factor)
+                rgb_data[i], _ = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, 1)
 
             r_data = rgb_data[:, 0]
             g_data = rgb_data[:, 1]
@@ -178,23 +186,72 @@ class Filament:
             plt.plot(d_data, r_data, 'r-', label='R fit')
             plt.plot(d_data, g_data, 'g-', label='G fit')
             plt.plot(d_data, b_data, 'b-', label='B fit')
-            plt.grid(color=self.icon_colour / 255)
 
             plt.xlabel('Thickness (mm)')
             plt.ylabel('Penetrate Rate')
+            plt.ylim(-0.2, 0.5)
+            plt.xlim(0, np.max(d_sample) * 1.2)
             plt.legend()
+
+            x_sp = np.linspace(0, np.max(d_sample) * 1.2, 1000)
+            t = []
+            r = []
+            
+            for d in x_sp:
+                nt, nr = Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)
+                t.append([min(1, nt[0]), min(1, nt[1]), min(1, nt[2])])
+                r.append([min(1, nr[0]), min(1, nr[1]), min(1, nr[2])])
+
+            plt.vlines(x_sp, [-0.1] * 1000, [0] * 1000, np.array(t)/max(max(t)))
+            plt.vlines(x_sp, [-0.2] * 1000, [-0.1] * 1000, np.array(r))
+
+            plt.text(0.1, -0.06, f"PENETRATE (*{round(1/max(max(t)), 2)})")
+            plt.text(0.1, -0.16, "REFLECT")
+
+            plt.grid()
+
+            plt.title("Penetrate Rate vs. Thickness")
+
+        def display_prediction():
+            colour_list = []
+            for d in thickness_list:
+                colour_list.append(list(Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)[0]))
+            
+            max_v = max(max(colour_list))
+
+            for i in range(len(colour_list)):
+                colour_list[i] = [thickness_list[i]] + [np.array(colour_list[i]) / max_v * 255]
+
+            sampling.display_sample(colour_list)
+            plt.title("Predicted Colours")
+
+        def display_origin():
+            sampling.display_sample(self.samples)
+            plt.title("Sampled Colours")
+
+        if shown:
+            display_results_plot()
+            plt.figure(1)
+
+            display_prediction()
+            plt.figure(2)
+
+            display_origin()
+            plt.figure(3)
 
             plt.show()
 
-        return
+        return 
 
 if __name__ == '__main__':
-    from sampling import virtualization_sampling
-    virtualization1 = virtualization_sampling()
-    virtualization2 = virtualization_sampling()
+
+    image_path = "csrc/FilaMatch/filament02.png"
+
     test_filament = Filament("test", "test")
+
+    test_filament.sampling(image_path)
+
     array = [[0.1, [228, 215, 207]], [0.2, [231, 205, 156]], [0.3, [216, 177, 102]], [0.4, [219, 165, 79]], [0.5, [214, 145, 68]], [0.6, [201, 129, 53]], [0.7, [199, 120, 51]], [0.8, [203, 112, 49]], [0.9, [198, 103, 45]], [1.0, [192, 94, 42]], [1.1, [187, 87, 38]], [1.2, [182, 79, 37]], [1.3, [181, 75, 36]], [1.4, [176, 69, 35]], [1.5, [172, 66, 33]], [1.6, [166, 58, 29]]]
-    test_filament.calculateCoefficients(array, True)
-    print(array)
-    virtualization1.sampled(array)
-    virtualization2.sampled(array)
+    print(array == test_filament.samples)
+
+    test_filament.calculateCoefficients(True)
