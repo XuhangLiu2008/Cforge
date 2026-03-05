@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
+import matplotlib.pyplot as plt
 
 KMean_counter = 0
 
@@ -27,7 +28,7 @@ def sampling(image_path):
 
     array = []
 
-    KMean_counter = 0
+    # KMean_counter = 0
 
     def gaussian_fit_score(data):
         data = np.array(data).reshape(-1, 1)
@@ -96,6 +97,33 @@ def sampling(image_path):
 
     return array
 
+class virtualization_sampling:
+    def sampled(SampledArray: list):
+        # Expect 16 samples arranged conceptually as a 4x4 grid
+        grid_size = 4
+
+        fig, ax = plt.subplots()
+
+        for idx, item in enumerate(SampledArray):
+            _, rgb = item
+            r, g, b = rgb
+
+            row = idx // grid_size
+            col = idx % grid_size
+
+            # Normalize RGB to [0,1] for matplotlib
+            color = (r / 255.0, g / 255.0, b / 255.0)
+
+            rect = plt.Rectangle((col, grid_size - 1 - row), 1, 1, color=color)
+            ax.add_patch(rect)
+
+        ax.set_xlim(0, grid_size)
+        ax.set_ylim(0, grid_size)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        plt.show()
+
 if __name__ == "__main__":
     image_path = "csrc/FilaMatch/filament02.png"
 
@@ -103,3 +131,5 @@ if __name__ == "__main__":
 
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
+
+    # virtualization_sampling.sampled(array)
