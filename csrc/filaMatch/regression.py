@@ -88,7 +88,7 @@ class Filament:
 
     @staticmethod
     def RGB2RelativeIntensity(color, gamma = 2.2, color_temp = 4000):
-        return np.array([Filament.inverseGamma(color[0]) / Filament.        R_temp2coff[color_temp],
+        return np.array([Filament.inverseGamma(color[0]) / Filament.R_temp2coff[color_temp],
                          Filament.inverseGamma(color[1]) / Filament.G_temp2coff[color_temp],
                          Filament.inverseGamma(color[2]) / Filament.B_temp2coff[color_temp]])
 
