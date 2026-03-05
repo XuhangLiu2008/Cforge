@@ -223,7 +223,7 @@ class Filament:
                 colour_list[i] = [thickness_list[i]] + [np.array(colour_list[i]) / max_v * 255]
 
             sampling.display_sample(colour_list)
-            plt.title("Predicted Colours")
+            plt.title(f"Predicted Colours (*{round(1/max_v, 2)})")
 
         def display_origin():
             sampling.display_sample(self.samples)
