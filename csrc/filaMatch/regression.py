@@ -72,11 +72,14 @@ class Filament:
 
         self.absorb_coeff = absorb_coeff
         self.scatter_coeff = scatter_coeff
-
+    
     @staticmethod
-    def inverseGamma(x, gamma = 2.2):
-        x /= 255
-        return x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** gamma
+    def inverseGamma(x):
+        x = x / 255.0
+        if x <= 0.04045:
+            return x / 12.92
+        else:
+            return ((x + 0.055) / 1.055) ** 2.4
 
     # R_temp2coff = {4000 : 1.8}
     # G_temp2coff = {4000 : 1.0}
@@ -87,12 +90,12 @@ class Filament:
     B_temp2coff = {4000 : 1.0}
 
     @staticmethod
-    def RGB2RelativeIntensity(color, gamma = 2.2, color_temp = 4000):
+    def RGB2RelativeIntensity(color, gamma = 2.4, color_temp = 4000):
         return np.array([Filament.inverseGamma(color[0]) / Filament.R_temp2coff[color_temp],
                          Filament.inverseGamma(color[1]) / Filament.G_temp2coff[color_temp],
                          Filament.inverseGamma(color[2]) / Filament.B_temp2coff[color_temp]])
 
-    def calculateCoefficients(self, samples, shown = False, color_temp = 4000, gamma = 2.2):
+    def calculateCoefficients(self, samples, shown = False, color_temp = 4000, gamma = 2.4):
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
@@ -144,7 +147,7 @@ class Filament:
 
         if self.icon_colour is None:
             tmp = (Filament.RatesInAir(100, self.absorb_coeff, self.scatter_coeff, 1))[1]
-            self.icon_colour = np.uint8(tmp / np.max(tmp) * 255)
+            self.icon_colour = np.uint8(tmp * 255)
 
         print("R coef:", r_coefficient)
         print("G coef:", g_coefficient)
@@ -186,5 +189,12 @@ class Filament:
         return
 
 if __name__ == '__main__':
+    from sampling import virtualization_sampling
+    virtualization1 = virtualization_sampling()
+    virtualization2 = virtualization_sampling()
     test_filament = Filament("test", "test")
-    test_filament.calculateCoefficients([[0.1, [231, 219, 212]], [0.2, [228, 203, 153]], [0.3, [220, 180, 104]], [0.4, [219, 165, 79]], [0.5, [213, 144, 66]], [0.6, [205, 132, 57]], [0.7, [201, 119, 51]], [0.8, [201, 111, 48]], [0.9, [197, 102, 44]], [1.0, [192, 92, 40]], [1.1, [186, 86, 37]], [1.2, [184, 78, 36]], [1.3, [179, 73, 34]], [1.4, [175, 69, 33]], [1.5, [171, 65, 32]], [1.6, [164, 59, 29]]], True)
+    array = [[0.1, [228, 215, 207]], [0.2, [231, 205, 156]], [0.3, [216, 177, 102]], [0.4, [219, 165, 79]], [0.5, [214, 145, 68]], [0.6, [201, 129, 53]], [0.7, [199, 120, 51]], [0.8, [203, 112, 49]], [0.9, [198, 103, 45]], [1.0, [192, 94, 42]], [1.1, [187, 87, 38]], [1.2, [182, 79, 37]], [1.3, [181, 75, 36]], [1.4, [176, 69, 35]], [1.5, [172, 66, 33]], [1.6, [166, 58, 29]]]
+    test_filament.calculateCoefficients(array, True)
+    print(array)
+    virtualization1.sampled(array)
+    virtualization2.sampled(array)

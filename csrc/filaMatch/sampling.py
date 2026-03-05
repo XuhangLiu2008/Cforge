@@ -98,6 +98,8 @@ def sampling(image_path):
     return array
 
 class virtualization_sampling:
+
+    @staticmethod
     def sampled(SampledArray: list):
         # Expect 16 samples arranged conceptually as a 4x4 grid
         grid_size = 4
@@ -132,4 +134,4 @@ if __name__ == "__main__":
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
 
-    # virtualization_sampling.sampled(array)
+    virtualization_sampling.sampled(array)
