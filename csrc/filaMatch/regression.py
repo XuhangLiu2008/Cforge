@@ -1,9 +1,13 @@
+from operator import le
+
 import numpy as np
 
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 import sampling
+
+import pprint
 
 
 class Filament:
@@ -58,14 +62,14 @@ class Filament:
 
     @staticmethod
     def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor):
-            T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
-            T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, Filament.k1, Filament.k2)
-            return enlarge_factor * T_m, enlarge_factor * R_m
+        T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
+        T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, Filament.k1, Filament.k2)
+        return enlarge_factor * T_m, enlarge_factor * R_m
 
     def __init__(self, brand, name,
-                 absorb_coeff = np.zeros(3, dtype=float),
-                 scatter_coeff = np.zeros(3, dtype=float),
-                 icon_colour = None):
+        absorb_coeff = np.zeros(3, dtype=float),
+        scatter_coeff = np.zeros(3, dtype=float),
+        icon_colour = None):
 
         
         self.brand = brand
@@ -164,6 +168,8 @@ class Filament:
         print("scatter coeff:", self.scatter_coeff)
         print("icon colour:", self.icon_colour)
 
+        print("enlarge factors:", enlarge_factor)
+
         def display_results_plot():
             d_sample = np.asarray(thickness_list, dtype=float)
             r_sample = np.asarray(r_list, dtype=float) / enlarge_factor[0]
@@ -217,10 +223,30 @@ class Filament:
             for d in thickness_list:
                 colour_list.append(list(Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)[0]))
             
+            print(enlarge_factor)
             max_v = max(max(colour_list))
 
             for i in range(len(colour_list)):
                 colour_list[i] = [thickness_list[i]] + [np.array(colour_list[i]) / max_v * 255]
+
+            # Debug Used Long Outputs
+            if DEBUG:
+                for i in colour_list:
+                    for i_indx in range(len(i[1])):
+                        i[1][i_indx] = round((i[1][i_indx]), 2)
+                
+                red_color_rate = 0.0
+                green_color_rate = 0.0
+                blue_color_rate = 0.0
+                for i in colour_list:
+                    red_color_rate += i[1][0] - 0.5 * (i[1][1] + i[1][2])
+                    green_color_rate += i[1][1] - 0.5 * (i[1][0] + i[1][2])
+                    blue_color_rate += i[1][2] - 0.5 * (i[1][0] + i[1][1])
+                red_color_rate = red_color_rate / 16
+
+                print("<<<<<Predicted>>>>>")
+                pprint.pprint(colour_list)
+                print(red_color_rate, ", ", green_color_rate, ", ", blue_color_rate)
 
             sampling.display_sample(colour_list)
             plt.title(f"Predicted Colours (*{round(1/max_v, 2)})")
@@ -244,14 +270,28 @@ class Filament:
         return 
 
 if __name__ == '__main__':
+    DEBUG = True
 
     image_path = "csrc/FilaMatch/filament02.png"
-
     test_filament = Filament("test", "test")
-
     test_filament.sampling(image_path)
 
     array = [[0.1, [228, 215, 207]], [0.2, [231, 205, 156]], [0.3, [216, 177, 102]], [0.4, [219, 165, 79]], [0.5, [214, 145, 68]], [0.6, [201, 129, 53]], [0.7, [199, 120, 51]], [0.8, [203, 112, 49]], [0.9, [198, 103, 45]], [1.0, [192, 94, 42]], [1.1, [187, 87, 38]], [1.2, [182, 79, 37]], [1.3, [181, 75, 36]], [1.4, [176, 69, 35]], [1.5, [172, 66, 33]], [1.6, [166, 58, 29]]]
     print(array == test_filament.samples)
 
     test_filament.calculateCoefficients(True)
+
+    # Debug Used Long Outputs
+    if DEBUG:
+        red_color_rate = 0.0
+        green_color_rate = 0.0
+        blue_color_rate = 0.0
+        for i in array:
+            red_color_rate += i[1][0] - 0.5 * (i[1][1] + i[1][2])
+            green_color_rate += i[1][1] - 0.5 * (i[1][0] + i[1][2])
+            blue_color_rate += i[1][2] - 0.5 * (i[1][0] + i[1][1])
+        red_color_rate = red_color_rate / 16
+
+        print("<<<<<Original>>>>>")
+        pprint.pprint(array)
+        print(red_color_rate, ", ", green_color_rate, ", ", blue_color_rate)
