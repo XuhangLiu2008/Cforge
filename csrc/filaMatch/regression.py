@@ -233,7 +233,34 @@ class Filament:
             if DEBUG:
                 for i in colour_list:
                     for i_indx in range(len(i[1])):
-                        i[1][i_indx] = round((i[1][i_indx]), 2)
+                        i[1][i_indx] = int((i[1][i_indx]))
+
+                # Brightness
+                for i in colour_list:
+                    ratio = 0.2
+                    i[1][0] += ratio * (255 - i[1][0])
+                    i[1][1] += ratio * (255 - i[1][1])
+                    i[1][2] += ratio * (255 - i[1][2])
+                
+                # Green correction
+                for i in colour_list:
+                    ratio = 0.05
+                    i[1][1] += ratio * i[1][1]
+                
+                # Saturation
+                # for i in colour_list:
+                #     ratio = 0.9
+                #     r, g, b = i[1]
+
+                #     y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+                #     r2 = y + ratio * (r - y)
+                #     g2 = y + ratio * (g - y)
+                #     b2 = y + ratio * (b - y)
+
+                #     i[1][0] = max(0, min(255, round(r2)))
+                #     i[1][1] = max(0, min(255, round(g2)))
+                #     i[1][2] = max(0, min(255, round(b2)))
                 
                 red_color_rate = 0.0
                 green_color_rate = 0.0
