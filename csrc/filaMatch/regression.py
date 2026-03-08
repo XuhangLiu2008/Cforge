@@ -80,10 +80,12 @@ class Filament:
         self.absorb_coeff = absorb_coeff
         self.scatter_coeff = scatter_coeff
 
-        self.samples = []
+        self.t_samples = []
+        self.r_samples = []
 
-    def sampling(self, image_path):
-        self.samples = sampling.sampling(image_path)
+    def sampling(self, T_image_path, R_image_path):
+        self.t_samples = sampling.sampling(T_image_path)
+        self.r_samples = sampling.sampling(R_image_path)
     
     @staticmethod
     def inverseGamma(x):
@@ -111,7 +113,7 @@ class Filament:
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
-        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, enlarge_factor_r, enlarge_factor_g, enlarge_factor_b):
+        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, t_enlarge_factor_r, t_enlarge_factor_g, t_enlarge_factor_b, r_enlarge_factor_r, r_enlarge_factor_g, r_enlarge_factor_b):
             # thickness here should be an array with 3 identical copies
             # to fit all coeffs together
             length = len(thickness) // 3
@@ -119,23 +121,29 @@ class Filament:
             K = np.array([K_r, K_g, K_b])
             S = np.array([S_r, S_g, S_b])
 
-            res = np.zeros((length, 3))
-            for i in range(length):
-                res[i], _ = Filament.RatesInAir(thickness[i], K, S, np.array([enlarge_factor_r, enlarge_factor_g, enlarge_factor_b], dtype=float))
+            t_res = np.zeros((length, 3))
+            r_res = np.zeros((length, 3))
 
-            return res.T.flatten()
+            t_enlarge_factor = np.array([t_enlarge_factor_r, t_enlarge_factor_g, t_enlarge_factor_b], dtype=float)
+            r_enlarge_factor = np.array([r_enlarge_factor_r, r_enlarge_factor_g, r_enlarge_factor_b], dtype=float)
+
+            for i in range(length):
+                t_res[i], _ = Filament.RatesInAir(thickness[i], K, S, t_enlarge_factor)
+                _, r_res[i] = Filament.RatesInAir(thickness[i], K, S, r_enlarge_factor)
+
+            return list(t_res.T.flatten()) + list(r_res.T.flatten())
 
         thickness_list = []
-        r_list = []
-        g_list = []
-        b_list = []
+        t_r_list = []
+        t_g_list = []
+        t_b_list = []
 
-        for sample in self.samples:
+        for sample in self.t_samples:
             thickness_list.append(sample[0])
             intensity = Filament.RGB2RelativeIntensity(sample[1], gamma=gamma, color_temp=color_temp)
-            r_list.append(intensity[0])
-            g_list.append(intensity[1])
-            b_list.append(intensity[2])
+            t_r_list.append(intensity[0])
+            t_g_list.append(intensity[1])
+            t_b_list.append(intensity[2])
 
         reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5]
         bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -145,7 +153,7 @@ class Filament:
         MAXFEV = int(1e6)
 
         thickness_arr = np.asarray(thickness_list * 3, dtype=float)
-        target_arr = np.asarray(r_list + g_list + b_list, dtype=float)
+        target_arr = np.asarray(t_r_list + t_g_list + t_b_list, dtype=float)
 
         coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
 
@@ -171,10 +179,11 @@ class Filament:
         print("enlarge factors:", enlarge_factor)
 
         def display_results_plot():
+            
             d_sample = np.asarray(thickness_list, dtype=float)
-            r_sample = np.asarray(r_list, dtype=float) / enlarge_factor[0]
-            g_sample = np.asarray(g_list, dtype=float) / enlarge_factor[1]
-            b_sample = np.asarray(b_list, dtype=float) / enlarge_factor[2]
+            r_sample = np.asarray(t_r_list, dtype=float) / enlarge_factor[0]
+            g_sample = np.asarray(t_g_list, dtype=float) / enlarge_factor[1]
+            b_sample = np.asarray(t_b_list, dtype=float) / enlarge_factor[2]
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
             rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
