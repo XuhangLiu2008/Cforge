@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 KMean_counter = 0
 
-def sampling(image_path):
+def square_sampling(image_path):
 
     fil_img = cv2.imread(image_path)
     if fil_img is None:
@@ -98,7 +98,7 @@ def sampling(image_path):
     return array
 
 
-def display_sample(SampledArray: list):
+def display_square_sample(SampledArray: list):
 
     # Expect 16 samples arranged conceptually as a 4x4 grid
     grid_size = 4
@@ -126,9 +126,9 @@ def display_sample(SampledArray: list):
 if __name__ == "__main__":
     image_path = "csrc/FilaMatch/filament02.png"
 
-    array = sampling(image_path)
+    array = square_sampling(image_path)
 
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
 
-    display_sample(array)
+    display_square_sample(array)
