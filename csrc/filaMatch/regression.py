@@ -114,9 +114,9 @@ class Filament:
         # colour should be np.uint8 array with size 3
 
         def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, t_enlarge_factor_r, t_enlarge_factor_g, t_enlarge_factor_b, r_enlarge_factor_r, r_enlarge_factor_g, r_enlarge_factor_b):
-            # thickness here should be an array with 3 identical copies
+            # thickness here should be an array with 6 identical copies
             # to fit all coeffs together
-            length = len(thickness) // 3
+            length = len(thickness) // 6
 
             K = np.array([K_r, K_g, K_b])
             S = np.array([S_r, S_g, S_b])
@@ -134,6 +134,7 @@ class Filament:
             return list(t_res.T.flatten()) + list(r_res.T.flatten())
 
         thickness_list = []
+
         t_r_list = []
         t_g_list = []
         t_b_list = []
@@ -145,25 +146,38 @@ class Filament:
             t_g_list.append(intensity[1])
             t_b_list.append(intensity[2])
 
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [10, 10, 10, 10, 10, 10, np.inf, np.inf, np.inf])
+        r_r_list = []
+        r_g_list = []
+        r_b_list = []
+
+        for sample in self.r_samples:
+
+            intensity = Filament.RGB2RelativeIntensity(sample[1], gamma=gamma, color_temp=color_temp)
+            r_r_list.append(intensity[0])
+            r_g_list.append(intensity[1])
+            r_b_list.append(intensity[2])
+
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]
+        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                  [10, 10, 10, 10, 10, 10, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
         # constrain params to physically meaningful ranges
 
         MAXFEV = int(1e6)
 
-        thickness_arr = np.asarray(thickness_list * 3, dtype=float)
-        target_arr = np.asarray(t_r_list + t_g_list + t_b_list, dtype=float)
+        thickness_arr = np.asarray(thickness_list * 6, dtype=float)
+        target_arr = np.asarray((t_r_list + t_g_list + t_b_list) + 
+                                (r_r_list + r_g_list + r_b_list), dtype=float)
 
         coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
 
-        r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6]])
-        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[7]])
-        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[8]])
+        r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6], coefficient[9]])
+        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[7], coefficient[10]])
+        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[8], coefficient[11]])
 
         self.absorb_coeff = np.array([r_coefficient[0], g_coefficient[0], b_coefficient[0]])
         self.scatter_coeff = np.array([r_coefficient[1], g_coefficient[1], b_coefficient[1]])
-        enlarge_factor = np.array([r_coefficient[2], g_coefficient[2], b_coefficient[2]])
+        t_enlarge_factor = np.array([r_coefficient[2], g_coefficient[2], b_coefficient[2]])
+        r_enlarge_factor = np.array([r_coefficient[3], g_coefficient[3], b_coefficient[3]])
 
         if self.icon_colour is None:
             tmp = (Filament.RatesInAir(100, self.absorb_coeff, self.scatter_coeff, 1))[1]
@@ -176,34 +190,53 @@ class Filament:
         print("scatter coeff:", self.scatter_coeff)
         print("icon colour:", self.icon_colour)
 
-        print("enlarge factors:", enlarge_factor)
+        print("t enlarge factors:", t_enlarge_factor)
+        print("r enlarge factors:", r_enlarge_factor)
 
         def display_results_plot():
             
             d_sample = np.asarray(thickness_list, dtype=float)
-            r_sample = np.asarray(t_r_list, dtype=float) / enlarge_factor[0]
-            g_sample = np.asarray(t_g_list, dtype=float) / enlarge_factor[1]
-            b_sample = np.asarray(t_b_list, dtype=float) / enlarge_factor[2]
+
+            t_r_sample = np.asarray(t_r_list, dtype=float) / t_enlarge_factor[0]
+            t_g_sample = np.asarray(t_g_list, dtype=float) / t_enlarge_factor[1]
+            t_b_sample = np.asarray(t_b_list, dtype=float) / t_enlarge_factor[2]
+
+            r_r_sample = np.asarray(r_r_list, dtype=float) / r_enlarge_factor[0]
+            r_g_sample = np.asarray(r_g_list, dtype=float) / r_enlarge_factor[1]
+            r_b_sample = np.asarray(r_b_list, dtype=float) / r_enlarge_factor[2]
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
-            rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
-            
+
+            t_rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
+            r_rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
+
             for i, thickness in enumerate(d_data):
-                rgb_data[i], _ = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, 1)
+                t_rgb_data[i], r_rgb_data[i] = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, 1)
 
-            r_data = rgb_data[:, 0]
-            g_data = rgb_data[:, 1]
-            b_data = rgb_data[:, 2]
+            t_r_data = t_rgb_data[:, 0]
+            t_g_data = t_rgb_data[:, 1]
+            t_b_data = t_rgb_data[:, 2]
 
-            plt.scatter(d_sample, r_sample, c = 'r', label='R samples')
-            plt.scatter(d_sample, g_sample, c = 'g', label='G samples')
-            plt.scatter(d_sample, b_sample, c = 'b', label='B samples')
-            plt.plot(d_data, r_data, 'r-', label='R fit')
-            plt.plot(d_data, g_data, 'g-', label='G fit')
-            plt.plot(d_data, b_data, 'b-', label='B fit')
+            r_r_data = r_rgb_data[:, 0]
+            r_g_data = r_rgb_data[:, 1]
+            r_b_data = r_rgb_data[:, 2]
+
+            plt.scatter(d_sample, t_r_sample, c = 'r', label='R samples')
+            plt.scatter(d_sample, t_g_sample, c = 'g', label='G samples')
+            plt.scatter(d_sample, t_b_sample, c = 'b', label='B samples')
+            plt.plot(d_data, t_r_data, 'r-', label='R fit')
+            plt.plot(d_data, t_g_data, 'g-', label='G fit')
+            plt.plot(d_data, t_b_data, 'b-', label='B fit')
+
+            plt.scatter(d_sample, r_r_sample, c = 'r', label='R samples')
+            plt.scatter(d_sample, r_g_sample, c = 'g', label='G samples')
+            plt.scatter(d_sample, r_b_sample, c = 'b', label='B samples')
+            plt.plot(d_data, r_r_data, 'r-', label='R fit')
+            plt.plot(d_data, r_g_data, 'g-', label='G fit')
+            plt.plot(d_data, r_b_data, 'b-', label='B fit')
 
             plt.xlabel('Thickness (mm)')
-            plt.ylabel('Penetrate Rate')
+            plt.ylabel('Penetrate Rate / Reflectance')
             plt.ylim(-0.2, 0.5)
             plt.xlim(0, np.max(d_sample) * 1.2)
             plt.legend()
@@ -225,14 +258,16 @@ class Filament:
 
             plt.grid()
 
-            plt.title("Penetrate Rate vs. Thickness")
+            plt.title("Penetrate Rate / Reflectance vs. Thickness")
 
-        def display_prediction():
+        def display_prediction(): # 这个还要改，但是不着急
             colour_list = []
             for d in thickness_list:
                 colour_list.append(list(Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)[0]))
             
-            print(enlarge_factor)
+            print(t_enlarge_factor)
+            print(r_enlarge_factor)
+
             max_v = max(max(colour_list))
 
             for i in range(len(colour_list)):
