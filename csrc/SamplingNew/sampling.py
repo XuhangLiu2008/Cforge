@@ -6,38 +6,28 @@ import matplotlib.pyplot as plt
 
 KMean_counter = 0
 
-def sampling(image_path):
+class sampling:
+    def prepare(img_path):
+        fil_img = cv2.imread(img_path)
+        if fil_img is None:
+            print("Error: Could not load image.")
+        else:
+            print("Image loaded successfully.")
+            print(f"Image shape: {fil_img.shape}")
+        
+        if fil_img.shape[2] != 3:
+            print("Error: Not a RGB image.")
 
-    fil_img = cv2.imread(image_path)
-    if fil_img is None:
-        print("Error: Could not load image.")
-    else:
-        print("Image loaded successfully.")
-        print(f"Image shape: {fil_img.shape}")
+        img_x = fil_img.shape[0]
+        img_y = fil_img.shape[1]
+
+        center_x = img_x // 2
+        center_y = img_y // 2
+        radius = (img_x + img_y) // 4
+        radius_min = radius // (1/4)
+        radius_max = radius // (3/4)
     
-    if fil_img.shape[2] != 3:
-        print("Error: Not a RGB image.")
-
-    img_x = fil_img.shape[0]
-    img_y = fil_img.shape[1]
-
-    # step_x = round(img_x / 8)
-    # step_y = round(img_y / 8)
-    # shift_x = round(step_x / 4)
-    # shift_y = round(step_y / 4)
-    # print(f"step_x: {step_x}, step_y: {step_y}, shift_x: {shift_x}, shift_y: {shift_y}")
-
-    center_x = img_x // 2
-    center_y = img_y // 2
-    radius = (img_x + img_y) // 4
-    radius_min = radius // (1/4)
-    radius_max = radius // (3/4)
-
-    array = []
-
-    # KMean_counter = 0
-
-    def SampleRad(fil_img, r, angle):
+    def SamplePoint(fil_img, r, angle, center_x, center_y):
         x = center_x + r * np.cos(angle)
         y = center_y + r * np.sin(angle)
 
@@ -70,11 +60,24 @@ def sampling(image_path):
         )
         return int(r), int(g), int(b)
 
-    def SampleOne():
-        pass
+    def SampleOne(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int):
+        Shift = np.pi / 32
+        StartAngle = StartAngle + (OrderNumber * (np.pi / 8)) + Shift
+        EndAngle = StartAngle + ((OrderNumber + 1) *(np.pi / 8)) - Shift
 
-    def gaussian_fit_score(data):
-        data = np.array(data).reshape(-1, 1)
+        RadiusMin = radius_min
+        RadiusMax = radius_max
+
+        OneThicknessSamples = []
+        for radius in range(radius_min, radius_max + 1, 1):
+            OneRadiusSamples = []
+            for angle in range(StartAngle, EndAngle, np.pi / (8 * radius)):
+                r, g, b = SamplePoint(fil_img, radius, angle, center_x, center_y)
+                OneRadiusSamples.append((radius, angle, (r, g, b)))
+        OneThicknessSamples.extend(OneRadiusSamples)
+
+    def gaussian_fit_score(ImageData):
+        data = np.array(ImageData).reshape(-1, 1)
 
         gm = GaussianMixture(
             n_components=1,
@@ -117,8 +120,9 @@ def sampling(image_path):
         lows = arr[kmeans.labels_ == low_label]
         low = lows[0].item()        # or lows[0].item()
         return low
-
-    return array
+    
+    def compute(fil_img):
+        pass
 
 
 def display_sample(SampledArray: list):
