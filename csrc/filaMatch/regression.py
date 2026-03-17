@@ -15,6 +15,8 @@ class Filament:
     refra_index = 1.65
     k1 = 0.11
     k2 = 0.65
+    # k1 = 0.11
+    # k2 = 0.65
 
     @staticmethod
     def KMrates(K : np.ndarray, S : np.ndarray, thickness : float) -> tuple[np.ndarray, np.ndarray]:
@@ -61,7 +63,7 @@ class Filament:
         return T_m, R_m
 
     @staticmethod
-    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor):
+    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor = 1):
         T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
         T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, Filament.k1, Filament.k2)
         return enlarge_factor * T_m, enlarge_factor * R_m
@@ -157,7 +159,7 @@ class Filament:
             r_g_list.append(intensity[1])
             r_b_list.append(intensity[2])
 
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5, 0.5, 0.5, 0.5]
         bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                   [10, 10, 10, 10, 10, 10, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
         # constrain params to physically meaningful ranges
@@ -241,8 +243,8 @@ class Filament:
             plt.plot(d_data, t_g_data, 'g-', label='G fit')
             plt.plot(d_data, t_b_data, 'b-', label='B fit')
 
-            plt.vlines(x_sp, [-0.2*t_r_data[0]] * 1000, [0] * 1000, np.array(t)/max(max(t)))
-            plt.text(0.1, -0.1*t_r_data[0], f"PENETRATE (*{round(1/max(max(t)), 2)})")
+            plt.vlines(x_sp, [-0.2*np.max(t_r_data)] * 1000, [0] * 1000, np.array(t)/max(max(t)))
+            plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/max(max(t)), 2)})")
 
             plt.xlabel('Thickness (mm)')
             plt.ylabel('Penetrate Rate')
@@ -267,8 +269,8 @@ class Filament:
             plt.grid()
             plt.title("Reflectance vs. Thickness")
 
-            plt.vlines(x_sp, [-0.2*r_r_data[0]] * 1000, [-0] * 1000, np.array(r))
-            plt.text(0.1, -0.1*r_r_data[0], "REFLECT")
+            plt.vlines(x_sp, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(r))
+            plt.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
 
             
 
@@ -376,9 +378,25 @@ if __name__ == '__main__':
                [1.5, [172, 66, 33]], 
                [1.6, [166, 58, 29]]]
     
-    
+    r_array = [[0.1, [175, 167, 202]], 
+               [0.2, [181, 194, 177]], 
+               [0.3, [194, 208, 195]], 
+               [0.4, [207, 206, 175]], 
+               [0.5, [213, 205, 169]], 
+               [0.6, [217, 205, 163]], 
+               [0.7, [223, 207, 169]], 
+               [0.8, [225, 208, 165]], 
+               [0.9, [224, 203, 161]], 
+               [1.0, [230, 211, 177]], 
+               [1.1, [230, 210, 163]], 
+               [1.2, [231, 207, 160]], 
+               [1.3, [231, 206, 158]], 
+               [1.4, [233, 207, 160]], 
+               [1.5, [238, 207, 190]], 
+               [1.6, [233, 206, 161]]]
     
     test_filament.t_samples = t_array
+    test_filament.r_samples = r_array
 
     test_filament.calculateCoefficients(True)
 
@@ -396,3 +414,20 @@ if __name__ == '__main__':
         print("<<<<<Original>>>>>")
         pprint.pprint(array)
         print(red_color_rate, ", ", green_color_rate, ", ", blue_color_rate)
+
+    # r_array = [[0.1, [132, 167, 202]], 
+    #            [0.2, [181, 194, 177]], 
+    #            [0.3, [194, 208, 195]], 
+    #            [0.4, [207, 206, 175]], 
+    #            [0.5, [213, 205, 169]], 
+    #            [0.6, [217, 205, 163]], 
+    #            [0.7, [223, 207, 169]], 
+    #            [0.8, [225, 208, 165]], 
+    #            [0.9, [224, 203, 161]], 
+    #            [1.0, [230, 211, 177]], 
+    #            [1.1, [230, 210, 163]], 
+    #            [1.2, [231, 207, 160]], 
+    #            [1.3, [231, 206, 158]], 
+    #            [1.4, [233, 207, 160]], 
+    #            [1.5, [238, 217, 190]], 
+    #            [1.6, [233, 206, 161]]]

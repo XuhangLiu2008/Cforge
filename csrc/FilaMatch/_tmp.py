@@ -10,39 +10,21 @@ img = cv2.imread(input_image_path)
 if img is None:
     raise FileNotFoundError(f"无法读取图像: {input_image_path}")
 
-res_list = []
+gauss_kernel_size = 121
+laplace_kernel_size = 121
 
-min_kernel_size = 41
-max_kernel_size = 43
+gauss_kernel = np.zeros((laplace_kernel_size, laplace_kernel_size)) + 1
 
-for kernel_size in range(min_kernel_size, max_kernel_size, 2):
+laplace_kernel = np.zeros((laplace_kernel_size, laplace_kernel_size)) - 1
+laplace_kernel[laplace_kernel_size // 2, laplace_kernel_size // 2] = laplace_kernel_size**2 - 1
 
-    kernel = np.zeros((kernel_size, kernel_size)) - 1
-    kernel[kernel_size // 2, kernel_size // 2] = kernel_size**2 - 1
+img = cv2.filter2D(img, cv2.CV_32F, gauss_kernel)
+img = cv2.filter2D(img, cv2.CV_32F, laplace_kernel)
 
-    result = cv2.filter2D(img, cv2.CV_32F, kernel)
+img = img[10 : -10, 10 : -10]
 
-    result = result[kernel_size // 2 : -kernel_size // 2, kernel_size // 2 : -kernel_size // 2]
+img = np.abs(img)
+img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
+img = np.uint8(img)
 
-    result = np.abs(result)
-    result = cv2.normalize(result, None, 0, 255, cv2.NORM_MINMAX)
-    result = np.uint8(result)
-
-    res_list.append(result)
-
-img = res_list[0]
 cv2.imwrite(output_image_path, img)
-
-# num_col = 5
-
-# num_row = len(res_list) // num_col
-
-# plt.figure(figsize=(num_col*1.5, num_row*1.5))
-
-# for i in range(len(res_list)):
-#     plt.subplot(num_row, num_col, i + 1)
-#     plt.imshow(res_list[i], cmap="gray")
-#     plt.axis("off")
-
-# plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-# plt.show()
