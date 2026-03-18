@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
+import scipy
 
 KMean_counter = 0
 
@@ -24,8 +25,10 @@ class sampling:
         center_x = img_x // 2
         center_y = img_y // 2
         radius = (img_x + img_y) // 4
-        radius_min = radius // (1/4)
-        radius_max = radius // (3/4)
+        radius_min = int(radius * (1/4))
+        radius_max = int(radius * (3/4))
+
+        return fil_img, center_x, center_y, radius_min, radius_max
     
     def SamplePoint(fil_img, r, angle, center_x, center_y):
         x = center_x + r * np.cos(angle)
@@ -37,10 +40,10 @@ class sampling:
         x_proportion_lower = 1 - x_proportion_upper
         y_proportion_lower = 1 - y_proportion_upper
 
-        b1, g1, r1 = fil_img[int(x), int(y)]
-        b2, g2, r2 = fil_img[int(x) + 1, int(y)]
-        b3, g3, r3 = fil_img[int(x), int(y) + 1]
-        b4, g4, r4 = fil_img[int(x) + 1, int(y) + 1]
+        b1, g1, r1 = fil_img[int(y), int(x)]
+        b2, g2, r2 = fil_img[int(y), int(x) + 1]
+        b3, g3, r3 = fil_img[int(y) + 1, int(x)]
+        b4, g4, r4 = fil_img[int(y) + 1, int(x) + 1]
 
         b_x_upper, g_x_upper, r_x_upper = (
             b1 * x_proportion_lower + b2 * x_proportion_upper,
@@ -59,70 +62,90 @@ class sampling:
             r_x_lower * y_proportion_lower + r_x_upper * y_proportion_upper,
         )
         return int(r), int(g), int(b)
+        # tmp = fil_img[int(y), int(x)]
+        # return tmp[0], tmp[1], tmp[2]
 
-    def SampleOne(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int):
+    def SampleOneMaterial(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int):
         Shift = np.pi / 32
-        StartAngle = StartAngle + (OrderNumber * (np.pi / 8)) + Shift
-        EndAngle = StartAngle + ((OrderNumber + 1) *(np.pi / 8)) - Shift
+        Start_Angle = StartAngle - (OrderNumber * (np.pi / 8)) - Shift
+        End_Angle = StartAngle - ((OrderNumber + 1) *(np.pi / 8)) + Shift
 
-        RadiusMin = radius_min
-        RadiusMax = radius_max
+        # print(Start_Angle, End_Angle)
 
-        OneThicknessSamples = []
+        OneThicknessSamples_r = []
+        OneThicknessSamples_g = []
+        OneThicknessSamples_b = []
         for radius in range(radius_min, radius_max + 1, 1):
-            OneRadiusSamples = []
-            for angle in range(StartAngle, EndAngle, np.pi / (8 * radius)):
-                r, g, b = SamplePoint(fil_img, radius, angle, center_x, center_y)
-                OneRadiusSamples.append((radius, angle, (r, g, b)))
-        OneThicknessSamples.extend(OneRadiusSamples)
+            # print(radius)
+            for angle in np.arange(End_Angle, Start_Angle, np.pi / (radius / 2)):
+                (r, g, b) = sampling.SamplePoint(fil_img, radius, angle, center_x, center_y)
+                OneThicknessSamples_r.extend([r])
+                OneThicknessSamples_g.extend([g])
+                OneThicknessSamples_b.extend([b])
 
-    def gaussian_fit_score(ImageData):
-        data = np.array(ImageData).reshape(-1, 1)
+        categorized_r = sampling.categorize(OneThicknessSamples_r)
+        categorized_g = sampling.categorize(OneThicknessSamples_g)
+        categorized_b = sampling.categorize(OneThicknessSamples_b)
 
-        gm = GaussianMixture(
-            n_components=1,
-            covariance_type="full",
-            random_state=0,
-            init_params="random",  # <- no internal KMeans
-        )
-        gm.fit(data)
-
-        # higher (less negative) means closer to normal
-        score = gm.score(data)
-        mean = gm.means_.ravel()[0]
-        return score, mean
-
+        print(categorized_r, categorized_g, categorized_b)
+        return categorized_r, categorized_g, categorized_b
+        
     def categorize(data):
-        global KMean_counter
-        arr = np.array(data, dtype=np.float64).reshape(-1, 1)
-        '''
-        if arr.size == 0:
-            return arr.flatten()
-        if np.unique(arr).size < 2:
-            return arr.flatten()
-        '''
-        normal_score, normal_mean = gaussian_fit_score(arr)
-        if normal_score > 0.0:
-            print(arr.flatten())
-            return normal_mean
+        return int(sum(data) / len(data)) if data else 0
 
-        KMean_counter += 1
+    # def gaussian_fit_score(ImageData):
+    #     data = np.array(ImageData).reshape(-1, 1)
 
-        kmeans = KMeans(
-            n_clusters=2,
-            init="random",   # <- avoids the k-means++ potential / matmul
-            n_init=10,
-            random_state=0,
-        )
-        kmeans.fit(arr)
-        centers = kmeans.cluster_centers_.flatten()
-        low_label = np.argmin(centers)     # cluster whose mean is smallest
-        lows = arr[kmeans.labels_ == low_label]
-        low = lows[0].item()        # or lows[0].item()
-        return low
+    #     gm = GaussianMixture(
+    #         n_components=1,
+    #         covariance_type="full",
+    #         random_state=0,
+    #         init_params="random",  # <- no internal KMeans
+    #     )
+    #     gm.fit(data)
+
+    #     # higher (less negative) means closer to normal
+    #     score = gm.score(data)
+    #     mean = gm.means_.ravel()[0]
+    #     return score, mean
+
+    # def categorize(data):
+    #     global KMean_counter
+    #     arr = np.array(data, dtype=np.float64).reshape(-1, 1)
+    #     '''
+    #     if arr.size == 0:
+    #         return arr.flatten()
+    #     if np.unique(arr).size < 2:
+    #         return arr.flatten()
+    #     '''
+    #     normal_score, normal_mean = sampling.gaussian_fit_score(arr)
+    #     if normal_score > 0.0:
+    #         print(arr.flatten())
+    #         return normal_mean
+
+    #     KMean_counter += 1
+
+    #     kmeans = KMeans(
+    #         n_clusters=2,
+    #         init="random",   # <- avoids the k-means++ potential / matmul
+    #         n_init=10,
+    #         random_state=0,
+    #     )
+    #     kmeans.fit(arr)
+    #     centers = kmeans.cluster_centers_.flatten()
+    #     low_label = np.argmin(centers)     # cluster whose mean is smallest
+    #     lows = arr[kmeans.labels_ == low_label]
+    #     low = lows[0].item()        # or lows[0].item()
+    #     return low
     
-    def compute(fil_img):
-        pass
+    def compute(self, ImagePath, StartAngle):
+        fil_img, center_x, center_y, radius_min, radius_max = sampling.prepare(ImagePath)
+        SampledArray = []
+        for OrderNumber in range(16):
+            r, g, b = sampling.SampleOneMaterial(fil_img, OrderNumber, StartAngle, radius_min, radius_max, center_x, center_y)
+            # print(StartAngle)
+            SampledArray.append((((OrderNumber + 1) / 10), (r, g, b)))
+        return SampledArray
 
 
 def display_sample(SampledArray: list):
@@ -151,10 +174,12 @@ def display_sample(SampledArray: list):
     ax.axis('off')
 
 if __name__ == "__main__":
-    image_path = "csrc/SamplingNew/Images/Mar112_orange_lin_up.jpeg"
+    ImagePath = "csrc/SamplingNew/Images/af39ab4f7a6b9f95d79b29a72cce839c.jpg"
 
-    array = sampling(image_path)
-    StartAngle = - np.pi
+    SampleInstance = sampling()
+
+    StartAngle = np.pi / 2 - 1.0406
+    array = SampleInstance.compute(ImagePath, StartAngle)
 
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)

@@ -337,18 +337,18 @@ class Filament:
             plt.title(f"Predicted Colours (*{round(1/max_v, 2)})")
 
         def display_origin(): # 这个还要改，但是不着急
-            sampling.display_sample(self.t_samples)
+            sampling.display_square_sample(self.r_samples)
             plt.title("Sampled Colours")
 
         if shown:
             display_results_plot()
-            # plt.figure(1)
+            plt.figure(1)
 
             # display_prediction()
             # plt.figure(2)
 
-            # display_origin()
-            # plt.figure(3)
+            display_origin()
+            plt.figure(3)
 
             plt.show()
 
@@ -378,22 +378,7 @@ if __name__ == '__main__':
                [1.5, [172, 66, 33]], 
                [1.6, [166, 58, 29]]]
     
-    r_array = [[0.1, [175, 167, 202]], 
-               [0.2, [181, 194, 177]], 
-               [0.3, [194, 208, 195]], 
-               [0.4, [207, 206, 175]], 
-               [0.5, [213, 205, 169]], 
-               [0.6, [217, 205, 163]], 
-               [0.7, [223, 207, 169]], 
-               [0.8, [225, 208, 165]], 
-               [0.9, [224, 203, 161]], 
-               [1.0, [230, 211, 177]], 
-               [1.1, [230, 210, 163]], 
-               [1.2, [231, 207, 160]], 
-               [1.3, [231, 206, 158]], 
-               [1.4, [233, 207, 160]], 
-               [1.5, [238, 207, 190]], 
-               [1.6, [233, 206, 161]]]
+    r_array = [(0.1, (185, 175, 120)), (0.2, (169, 165, 113)), (0.3, (164, 157, 115)), (0.4, (215, 172, 101)), (0.5, (216, 176, 107)), (0.6, (214, 170, 97)), (0.7, (213, 172, 100)), (0.8, (214, 174, 102)), (0.9, (213, 175, 107)), (1.0, (215, 180, 117)), (1.1, (212, 176, 109)), (1.2, (210, 177, 110)), (1.3, (208, 178, 112)), (1.4, (205, 177, 111)), (1.5, (198, 173, 108)), (1.6, (191, 171, 108))]
     
     test_filament.t_samples = t_array
     test_filament.r_samples = r_array
@@ -405,14 +390,14 @@ if __name__ == '__main__':
         red_color_rate = 0.0
         green_color_rate = 0.0
         blue_color_rate = 0.0
-        for i in array:
+        for i in r_array:
             red_color_rate += i[1][0] - 0.5 * (i[1][1] + i[1][2])
             green_color_rate += i[1][1] - 0.5 * (i[1][0] + i[1][2])
             blue_color_rate += i[1][2] - 0.5 * (i[1][0] + i[1][1])
         red_color_rate = red_color_rate / 16
 
         print("<<<<<Original>>>>>")
-        pprint.pprint(array)
+        pprint.pprint(r_array)
         print(red_color_rate, ", ", green_color_rate, ", ", blue_color_rate)
 
     # r_array = [[0.1, [132, 167, 202]], 
