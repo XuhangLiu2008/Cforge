@@ -19,8 +19,8 @@ class sampling:
         if fil_img.shape[2] != 3:
             print("Error: Not a RGB image.")
 
-        img_x = fil_img.shape[0]
-        img_y = fil_img.shape[1]
+        img_x = fil_img.shape[1]
+        img_y = fil_img.shape[0]
 
         center_x = img_x // 2
         center_y = img_y // 2
@@ -57,9 +57,9 @@ class sampling:
         )
 
         b, g, r = (
-            b_x_lower * y_proportion_lower + b_x_upper * y_proportion_upper,
-            g_x_lower * y_proportion_lower + g_x_upper * y_proportion_upper,
-            r_x_lower * y_proportion_lower + r_x_upper * y_proportion_upper,
+            b_x_upper * y_proportion_lower + b_x_lower * y_proportion_upper,
+            g_x_upper * y_proportion_lower + g_x_lower * y_proportion_upper,
+            r_x_upper * y_proportion_lower + r_x_lower * y_proportion_upper,
         )
         return int(r), int(g), int(b)
         # tmp = fil_img[int(y), int(x)]
@@ -77,7 +77,7 @@ class sampling:
         OneThicknessSamples_b = []
         for radius in range(radius_min, radius_max + 1, 1):
             # print(radius)
-            for angle in np.arange(End_Angle, Start_Angle, np.pi / (radius / 2)):
+            for angle in np.arange(End_Angle, Start_Angle, np.pi / (radius / 8)):
                 (r, g, b) = sampling.SamplePoint(fil_img, radius, angle, center_x, center_y)
                 OneThicknessSamples_r.extend([r])
                 OneThicknessSamples_g.extend([g])
