@@ -5,7 +5,7 @@ from matplotlib.colors import ListedColormap
 import collections
 
 class OptimizedPearliteSimulator:
-    def __init__(self, size=500, num_seeds=25):
+    def __init__(self, size=500, num_seeds=1):
         self.size = size
         self.grid = np.zeros((size, size), dtype=int)
         self.vector_field = np.zeros((size, size, 2))
@@ -20,7 +20,7 @@ class OptimizedPearliteSimulator:
         # 预计算周期场 (方案1: 周期随空间变化)
         x = np.linspace(0, 1, size)
         X, _ = np.meshgrid(x, x)
-        self.period_map = 10.0 - 4.0 * X 
+        self.period_map = 12.0 - 4.0 * X ** 2
         
         self._initialize_seeds(num_seeds)
 
@@ -70,7 +70,7 @@ class OptimizedPearliteSimulator:
                         has_austenite_neighbor = True
                         
                         # 1. 局部属性继承与扰动
-                        v = parent_v + np.random.normal(0, 0.0002, 2)
+                        v = parent_v + np.random.normal(0, 0, 2)
                         v /= np.linalg.norm(v)
                         self.vector_field[nr, nc] = v
                         
