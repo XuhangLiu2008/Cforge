@@ -13,8 +13,8 @@ import pprint
 class Filament:
 
     refra_index = 1.65
-    k1 = 0.11
-    k2 = 0.65
+    default_k1 = 0.11
+    default_k2 = 0.65
     # k1 = 0.11
     # k2 = 0.65
 
@@ -45,7 +45,7 @@ class Filament:
         return T_KM, R_KM
 
     @staticmethod
-    def SaundersonCorrection(T_KM : np.ndarray, R_KM : np.ndarray, k1 : float, k2 : float) -> tuple[np.ndarray, np.ndarray]:
+    def SaundersonCorrection(T_KM : np.ndarray, R_KM : np.ndarray, k1 : float = default_k1, k2 : float = default_k2) -> tuple[np.ndarray, np.ndarray]:
         # k1 is the reflectance of the surface, k2 is the reflectance of the inner boundary
 
         T_m = np.zeros(3, dtype=float)
@@ -63,9 +63,9 @@ class Filament:
         return T_m, R_m
 
     @staticmethod
-    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor = 1):
+    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor = 1, k1 = default_k1, k2 = default_k2):
         T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
-        T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, Filament.k1, Filament.k2)
+        T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, k1, k2)
         return enlarge_factor * T_m, enlarge_factor * R_m
 
     def __init__(self, brand, name,
@@ -223,15 +223,6 @@ class Filament:
             r_g_data = r_rgb_data[:, 1]
             r_b_data = r_rgb_data[:, 2]
 
-            x_sp = np.linspace(0, np.max(d_sample) * 1.2, 1000)
-            t = []
-            r = []
-            
-            for d in x_sp:
-                nt, nr = Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)
-                t.append([min(1, nt[0]), min(1, nt[1]), min(1, nt[2])])
-                r.append([min(1, nr[0]), min(1, nr[1]), min(1, nr[2])])
-
             plt.figure(figsize=(10, 4))
 
             plt.subplot(1, 2, 1)
@@ -243,8 +234,8 @@ class Filament:
             plt.plot(d_data, t_g_data, 'g-', label='G fit')
             plt.plot(d_data, t_b_data, 'b-', label='B fit')
 
-            plt.vlines(x_sp, [-0.2*np.max(t_r_data)] * 1000, [0] * 1000, np.array(t)/max(max(t)))
-            plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/max(max(t)), 2)})")
+            plt.vlines(d_data, [-0.2*np.max(t_r_data)] * 1000, [0] * 1000, np.array(t_rgb_data)/np.max(t_rgb_data))
+            plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/np.max(t_rgb_data), 2)})")
 
             plt.xlabel('Thickness (mm)')
             plt.ylabel('Penetrate Rate')
@@ -269,7 +260,7 @@ class Filament:
             plt.grid()
             plt.title("Reflectance vs. Thickness")
 
-            plt.vlines(x_sp, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(r))
+            plt.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(np.clip(r_rgb_data, 0, 1)))
             plt.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
 
             
@@ -348,7 +339,7 @@ class Filament:
             # plt.figure(2)
 
             display_origin()
-            plt.figure(3)
+            plt.figure(2)
 
             plt.show()
 
@@ -378,8 +369,8 @@ if __name__ == '__main__':
                [1.5, [172, 66, 33]], 
                [1.6, [166, 58, 29]]]
     
-    r_array = [(0.1, (184, 174, 120)), (0.2, (167, 164, 114)), (0.3, (166, 157, 114)), (0.4, (214, 172, 102)), (0.5, (215, 175, 106)), (0.6, (214, 171, 98)), (0.7, (214, 173, 101)), (0.8, (214, 175, 104)), (0.9, (212, 175, 107)), (1.0, (214, 179, 116)), (1.1, (210, 175, 108)), (1.2, (209, 176, 110)), (1.3, (206, 176, 111)), (1.4, (203, 175, 110)), (1.5, (196, 172, 107)), (1.6, (190, 171, 109))]
-    
+    r_array = [(0.1, (160.0, 165.0, 126.0)), (0.2, (187.0, 180.0, 113.0)), (0.3, (210.0, 195.0, 135.0)), (0.4, (209.0, 187.0, 115.0)), (0.5, (214.0, 184.0, 113.0)), (0.6, (219.0, 188.0, 112.0)), (0.7, (222.0, 186.0, 114.0)), (0.8, (221.0, 184.0, 109.0)), (0.9, (220.0, 182.0, 109.0)), (1.0, (226.0, 190.0, 119.0)), (1.1, (222.0, 183.0, 107.0)), (1.2, (230.0, 187.0, 106.0)), (1.3, (229.0, 182.0, 104.0)), (1.4, (230.0, 183.0, 103.0)), (1.5, (234.0, 190.0, 121.0)), (1.6, (231.0, 185.0, 103.0))]
+
     test_filament.t_samples = t_array
     test_filament.r_samples = r_array
 
