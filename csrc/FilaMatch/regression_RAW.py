@@ -116,7 +116,7 @@ class Filament:
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
-        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, t_enlarge_factor_r, t_enlarge_factor_g, t_enlarge_factor_b, r_enlarge_factor_r, r_enlarge_factor_g, r_enlarge_factor_b):
+        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, t_enlarge_factor, r_enlarge_factor):
             # thickness here should be an array with 6 identical copies
             # to fit all coeffs together
             length = len(thickness) // 6
@@ -126,9 +126,6 @@ class Filament:
 
             t_res = np.zeros((length, 3))
             r_res = np.zeros((length, 3))
-
-            t_enlarge_factor = np.array([t_enlarge_factor_r, t_enlarge_factor_g, t_enlarge_factor_b], dtype=float)
-            r_enlarge_factor = np.array([r_enlarge_factor_r, r_enlarge_factor_g, r_enlarge_factor_b], dtype=float)
 
             for i in range(length):
                 t_res[i], _ = Filament.RatesInAir(thickness[i], K, S, t_enlarge_factor)
@@ -160,9 +157,9 @@ class Filament:
             r_g_list.append(intensity[1])
             r_b_list.append(intensity[2])
 
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 2.5, 0.5, 0.5, 0.5]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [10, 10, 10, 10, 10, 10, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 0.5]
+        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                  [10, 10, 10, 10, 10, 10, np.inf, np.inf])
         # constrain params to physically meaningful ranges
 
         MAXFEV = int(1e6)
@@ -173,14 +170,14 @@ class Filament:
 
         coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
 
-        r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6], coefficient[9]])
-        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[7], coefficient[10]])
-        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[8], coefficient[11]])
+        r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6], coefficient[7]])
+        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[6], coefficient[7]])
+        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[6], coefficient[7]])
 
         self.absorb_coeff = np.array([r_coefficient[0], g_coefficient[0], b_coefficient[0]])
         self.scatter_coeff = np.array([r_coefficient[1], g_coefficient[1], b_coefficient[1]])
-        t_enlarge_factor = np.array([r_coefficient[2], g_coefficient[2], b_coefficient[2]])
-        r_enlarge_factor = np.array([r_coefficient[3], g_coefficient[3], b_coefficient[3]])
+        t_enlarge_factor = coefficient[6]
+        r_enlarge_factor = coefficient[7]
 
         if self.icon_colour is None:
             tmp = (Filament.RatesInAir(100, self.absorb_coeff, self.scatter_coeff, 1))[1]
@@ -200,13 +197,13 @@ class Filament:
             
             d_sample = np.asarray(thickness_list, dtype=float)
 
-            t_r_sample = np.asarray(t_r_list, dtype=float) / t_enlarge_factor[0]
-            t_g_sample = np.asarray(t_g_list, dtype=float) / t_enlarge_factor[1]
-            t_b_sample = np.asarray(t_b_list, dtype=float) / t_enlarge_factor[2]
+            t_r_sample = np.asarray(t_r_list, dtype=float) / t_enlarge_factor
+            t_g_sample = np.asarray(t_g_list, dtype=float) / t_enlarge_factor
+            t_b_sample = np.asarray(t_b_list, dtype=float) / t_enlarge_factor
 
-            r_r_sample = np.asarray(r_r_list, dtype=float) / r_enlarge_factor[0]
-            r_g_sample = np.asarray(r_g_list, dtype=float) / r_enlarge_factor[1]
-            r_b_sample = np.asarray(r_b_list, dtype=float) / r_enlarge_factor[2]
+            r_r_sample = np.asarray(r_r_list, dtype=float) / r_enlarge_factor
+            r_g_sample = np.asarray(r_g_list, dtype=float) / r_enlarge_factor
+            r_b_sample = np.asarray(r_b_list, dtype=float) / r_enlarge_factor
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
 
