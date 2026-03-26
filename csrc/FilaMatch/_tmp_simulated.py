@@ -20,7 +20,7 @@ class OptimizedPearliteSimulator:
         # 预计算周期场 (方案1: 周期随空间变化)
         x = np.linspace(0, 1, size)
         X, _ = np.meshgrid(x, x)
-        self.period_map = 12.0 - 4.0 * X ** 2
+        self.period_map = 20 + 10 * X  # 周期从20到30线性变化
         
         self._initialize_seeds(num_seeds)
 

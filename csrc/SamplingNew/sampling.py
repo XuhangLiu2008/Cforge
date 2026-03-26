@@ -8,16 +8,9 @@ import scipy
 KMean_counter = 0
 
 class sampling:
-    def prepare(img_path):
-        fil_img = cv2.imread(img_path)
-        if fil_img is None:
-            print("Error: Could not load image.")
-        else:
-            print("Image loaded successfully.")
-            print(f"Image shape: {fil_img.shape}")
-        
-        if fil_img.shape[2] != 3:
-            print("Error: Not a RGB image.")
+
+    @staticmethod
+    def prepare_array(fil_img : np.ndarray):
 
         img_x = fil_img.shape[0]
         img_y = fil_img.shape[1]
@@ -28,8 +21,27 @@ class sampling:
         radius_min = int(radius * (1/2))
         radius_max = int(radius * (3/4))
 
-        return fil_img, center_x, center_y, radius_min, radius_max
+        return center_x, center_y, radius_min, radius_max
+
+    @staticmethod
+    def prepare(img_path : str | np.ndarray):
+
+        if type(img_path) == str:
+            fil_img = cv2.imread(img_path)
+            if fil_img is None:
+                print("Error: Could not load image.")
+            else:
+                print("Image loaded successfully.")
+                print(f"Image shape: {fil_img.shape}")
+            
+            if fil_img.shape[2] != 3:
+                print("Error: Not a RGB image.")
+        else:
+            fil_img = img_path
+
+        return fil_img, *sampling.prepare_array(fil_img)
     
+    @staticmethod
     def SamplePoint(fil_img, r, angle, center_x, center_y):
         x = center_x + r * np.cos(angle)
         y = center_y - r * np.sin(angle) # indice ordered from top to bottom
@@ -71,6 +83,7 @@ class sampling:
         # tmp = fil_img[int(y), int(x)]
         # return tmp[0], tmp[1], tmp[2]
 
+    @staticmethod
     def SampleOneMaterial(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int):
         Shift = np.pi / 32
         Start_Angle = StartAngle - (OrderNumber * (np.pi / 8)) - Shift
@@ -89,16 +102,12 @@ class sampling:
                 OneThicknessSamples_g.extend([g])
                 OneThicknessSamples_b.extend([b])
 
-        categorized_r = sampling.categorize(OneThicknessSamples_r)
-        categorized_g = sampling.categorize(OneThicknessSamples_g)
-        categorized_b = sampling.categorize(OneThicknessSamples_b)
-
-        print(categorized_r, categorized_g, categorized_b)
-        return categorized_r, categorized_g, categorized_b
+        return OneThicknessSamples_r, OneThicknessSamples_g, OneThicknessSamples_b
         
     # def categorize(data):
     #     return int(sum(data) / len(data)) if data else 0
 
+    @staticmethod
     def gaussian_fit_score(ImageData):
         data = np.array(ImageData).reshape(-1, 1)
 
@@ -115,6 +124,7 @@ class sampling:
         mean = gm.means_.ravel()[0]
         return score, mean
 
+    @staticmethod
     def categorize(data):
         global KMean_counter
         arr = np.array(data, dtype=np.float64).reshape(-1, 1)
@@ -144,19 +154,55 @@ class sampling:
         low = lows[0].item()        # or lows[0].item()
         return low
     
-    def compute(self, ImagePath, StartAngle):
+    @staticmethod
+    def compute(ImagePath : str | np.ndarray, StartAngle, categorize=True):
+
         fil_img, center_x, center_y, radius_min, radius_max = sampling.prepare(ImagePath)
         SampledArray = []
+
         for OrderNumber in range(16):
-            r, g, b = sampling.SampleOneMaterial(fil_img, OrderNumber, StartAngle, radius_min, radius_max, center_x, center_y)
+
+            OneThicknessSamples_rgb = sampling.SampleOneMaterial(fil_img, OrderNumber, StartAngle, radius_min, radius_max, center_x, center_y)
+
+            OneThicknessSamples_r, OneThicknessSamples_g, OneThicknessSamples_b = OneThicknessSamples_rgb
 
             # cv2.imshow("image", fil_img)
             # cv2.waitKey(0)
             # print(StartAngle)
+            
+            if not categorize:
+                avg = lambda x: int(sum(x) / len(x)) if x else 0
+                categorized_r = avg(OneThicknessSamples_r)
+                categorized_g = avg(OneThicknessSamples_g)
+                categorized_b = avg(OneThicknessSamples_b)
+            else:
+                categorized_r = sampling.categorize(OneThicknessSamples_r)
+                categorized_g = sampling.categorize(OneThicknessSamples_g)
+                categorized_b = sampling.categorize(OneThicknessSamples_b)
 
-            SampledArray.append((((OrderNumber + 1) / 10), (r, g, b)))
+            print(categorized_r, categorized_g, categorized_b)
+
+            SampledArray.append((((OrderNumber + 1) / 10), (categorized_r, categorized_g, categorized_b)))
         return SampledArray
 
+    def __init__(self, t_ImagePath : str, src_ImagePath : str, r_ImagePath : str, 
+                 luminance : np.ndarray = None, 
+                 t_StartAngle : float = None, r_StartAngle : float = None):
+        
+        self.t_ImagePath = t_ImagePath
+        self.src_ImagePath = src_ImagePath
+        self.r_ImagePath = r_ImagePath
+
+        self.luminance = luminance if luminance is not None else np.ones(3)
+
+        self.t_StartAngle = t_StartAngle if t_StartAngle is not None else 0
+        self.r_StartAngle = r_StartAngle if r_StartAngle is not None else 0
+
+        self.r_input_luminance = None # should be float
+        self.t_input_luminance = None
+
+        self.r_output_luminance = None # should be np.ndarray
+        self.t_output_luminance = None
 
 def display_sample(SampledArray: list):
 
@@ -186,10 +232,8 @@ def display_sample(SampledArray: list):
 if __name__ == "__main__":
     ImagePath = "csrc/SamplingNew/Images/af39ab4f7a6b9f95d79b29a72cce839c.jpg"
 
-    SampleInstance = sampling()
-
     StartAngle = np.pi / 2 - 1.0406
-    array = SampleInstance.compute(ImagePath, StartAngle)
+    array = sampling.compute(ImagePath, StartAngle)
 
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
