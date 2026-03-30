@@ -4,12 +4,31 @@ from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 
+import scipy as sp
+
 import visual_manage
 from copy import deepcopy
 
 KMean_counter = 0
 
 class sampling:
+
+    @staticmethod 
+    def _flex_read(image_path : str | np.ndarray):
+        # read image
+        if type(image_path) == str:
+            img = cv2.imread(image_path)
+            if img is None:
+                print("Error: Could not load image.")
+            else:
+                print("Image loaded successfully.")
+                print(f"Image shape: {img.shape}")
+            
+            if img.shape[2] != 3:
+                print("Error: Not a RGB image.")
+        else:
+            img = image_path
+        return img
 
     class geo_info:
         def __init__(self, center_x, center_y, radius, start_angle):
@@ -29,10 +48,32 @@ class sampling:
         result[~mask] = ((value[~mask] + 0.055) / 1.055) ** 2.4
         return result
 
+    GeoSampleNumAngles = 720
+    GeoSampleNumRadii = 500
+    CentreSampleDiskSize = 10
+
+    CentreEmptyRealR = 10.0 #(mm)
+    SampleDiskRealSize = 30.0 #(mm)
+
     @staticmethod
     def prepare_geometric(image_path : str | np.ndarray, shown=True) -> geo_info:
 
+        def sample_ring(gray, center, radius, angles):
+            intensities = []
+
+            for theta in angles:
+                px = int(center[0] + radius * np.cos(theta))
+                py = int(center[1] + radius * np.sin(theta))
+
+                if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
+                    intensities.append(gray[py, px])
+                else:
+                    intensities.append(0)
+
+            return np.array(intensities)
+
         def detect_circle(gray):
+            
             blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
 
             circles = cv2.HoughCircles(
@@ -49,22 +90,37 @@ class sampling:
             if circles is None:
                 raise RuntimeError("No circle detected. Adjust parameters.")
 
-            x, y, r = np.uint16(np.around(circles))[0][0]
-            return (x, y), r
+            x, y, _ = np.uint16(np.around(circles))[0][0]
 
-        def sample_ring(gray, center, radius, angles):
-            intensities = []
+            angles = np.linspace(0, 2*np.pi, sampling.GeoSampleNumAngles, endpoint=False)
 
-            for theta in angles:
-                px = int(center[0] + radius * np.cos(theta))
-                py = int(center[1] + radius * np.sin(theta))
+            h, w = gray.shape
+            radii = np.linspace(0, min(h, w) // 2, sampling.GeoSampleNumRadii, endpoint=False)
 
-                if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
-                    intensities.append(gray[py, px])
-                else:
-                    intensities.append(0)
+            means = []
 
-            return np.array(intensities)
+            for radius in radii:
+                intensities = sample_ring(gray, (x, y), radius, angles)
+                means.append(np.mean(intensities))
+
+            means = np.array(means)
+            gradients = np.gradient(sp.ndimage.gaussian_filter(means, sigma=2))
+
+            small_R = 10
+
+            if np.average(means[:small_R]) < 0.5 * 255: 
+                # it's a dark circle -> r image
+                # maximum gradient corresponds to the boundary of the centre empty circle
+                r_empty_region = radii[np.argmax(gradients)]
+                r_sample_disk = int(sampling.SampleDiskRealSize / sampling.CentreEmptyRealR * r_empty_region)
+
+            else:
+                # it's a light circle -> t image
+                # minimum gradient corresponds to the boundary of the centre empty circle
+                r_empty_region = radii[np.argmin(gradients)]
+                r_sample_disk = int(sampling.SampleDiskRealSize / sampling.CentreEmptyRealR * r_empty_region)
+
+            return (x, y), r_sample_disk
 
         def compute_gradient(intensities):
             smooth = cv2.GaussianBlur(
@@ -148,19 +204,7 @@ class sampling:
             ax.set_title("Aggregated Gradient Profile")
             ax.grid(True)
 
-        # read image
-        if type(image_path) == str:
-            img = cv2.imread(image_path)
-            if img is None:
-                print("Error: Could not load image.")
-            else:
-                print("Image loaded successfully.")
-                print(f"Image shape: {img.shape}")
-            
-            if img.shape[2] != 3:
-                print("Error: Not a RGB image.")
-        else:
-            img = image_path
+        img = sampling._flex_read(image_path)
             
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -202,7 +246,7 @@ class sampling:
     LayerThickness = 0.1
     
     @staticmethod
-    def sampleOneImage(ImagePath : str | np.ndarray, geo_info : geo_info = None, categorize=True):
+    def sampleOneImage(ImagePath : str | np.ndarray, geo_info : geo_info = None, categorize=True, shown=False):
 
         def prepare_array(fil_img : np.ndarray):
 
@@ -227,6 +271,14 @@ class sampling:
 
             return fil_img, *prepare_array(fil_img)
         
+        def displaySamplePoint(img_copy, r, angle, center_x, center_y):
+            x = center_x + r * np.cos(angle)
+            y = center_y - r * np.sin(angle) # indice ordered from top to bottom
+
+            cv2.circle(img_copy, (int(x), int(y)), 1, (0, 255, 0), -1)
+
+            return img_copy
+
         def SamplePoint(fil_img, r, angle, center_x, center_y):
             x = center_x + r * np.cos(angle)
             y = center_y - r * np.sin(angle) # indice ordered from top to bottom
@@ -241,12 +293,6 @@ class sampling:
             b2, g2, r2 = fil_img[int(y), int(x) + 1]
             b3, g3, r3 = fil_img[int(y) + 1, int(x)]
             b4, g4, r4 = fil_img[int(y) + 1, int(x) + 1]
-
-            # fil_img[int(y), int(x)] = np.array([0, 255, 0])
-            # fil_img[int(y), int(x) + 1] = np.array([0, 255, 0])
-            # fil_img[int(y) + 1, int(x)] = np.array([0, 255, 0])
-            # fil_img[int(y) + 1, int(x) + 1] = np.array([0, 255, 0])
-            # # for debug
 
             b_x_upper, g_x_upper, r_x_upper = (
                 b1 * x_proportion_lower + b2 * x_proportion_upper,
@@ -268,7 +314,7 @@ class sampling:
             # tmp = fil_img[int(y), int(x)]
             # return tmp[0], tmp[1], tmp[2]
 
-        def SampleOneMaterial(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int):
+        def SampleOneMaterial(fil_img: np.ndarray, OrderNumber: int, StartAngle: float, radius_min: int, radius_max: int, center_x: int, center_y: int, img_copy = None):
 
             Start_Angle = StartAngle - (OrderNumber * (np.pi / 8)) - sampling.BoundaryDismissAngle 
             End_Angle = StartAngle - ((OrderNumber + 1) *(np.pi / 8)) + sampling.BoundaryDismissAngle 
@@ -282,6 +328,8 @@ class sampling:
                 # print(radius)
                 for angle in np.arange(End_Angle, Start_Angle, np.pi / (radius / 2)):
                     (r, g, b) = SamplePoint(fil_img, radius, angle, center_x, center_y)
+                    if img_copy is not None:
+                        img_copy = displaySamplePoint(img_copy, radius, angle, center_x, center_y)
                     OneThicknessSamples_r.extend([r])
                     OneThicknessSamples_g.extend([g])
                     OneThicknessSamples_b.extend([b])
@@ -336,27 +384,31 @@ class sampling:
             low = lows[0].item()        # or lows[0].item()
             return low
 
+        @visual_manage.visualmethod("Sample Points Visualization")
+        def visualize_sample(img_copy, fig=None, ax=None):
+            ax.imshow(cv2.cvtColor(img_copy.astype(np.uint8), cv2.COLOR_BGR2RGB))
+            ax.set_title("Sample Points Visualization")
+            ax.axis('off')
+
         if geo_info is None:
             fil_img, center_x, center_y, radius_min, radius_max, start_angle = prepare(ImagePath)
         else:
             fil_img = ImagePath if type(ImagePath) != str else cv2.imread(ImagePath)
             center_x = geo_info.center_x
             center_y = geo_info.center_y
-            radius_min = 0
-            radius_max = geo_info.radius
+            radius_min = int(geo_info.radius * sampling.MinRadiusRatio)
+            radius_max = int(geo_info.radius * sampling.MaxRadiusRatio)
             start_angle = geo_info.start_angle
 
         SampledArray = []
 
+        img_copy = deepcopy(fil_img)
+
         for OrderNumber in range(16):
 
-            OneThicknessSamples_rgb = SampleOneMaterial(fil_img, OrderNumber, start_angle, radius_min, radius_max, center_x, center_y)
+            OneThicknessSamples_rgb = SampleOneMaterial(fil_img, OrderNumber, start_angle, radius_min, radius_max, center_x, center_y, img_copy if shown else None)
 
             OneThicknessSamples_r, OneThicknessSamples_g, OneThicknessSamples_b = OneThicknessSamples_rgb
-
-            # cv2.imshow("image", fil_img)
-            # cv2.waitKey(0)
-            # print(StartAngle)
             
             if not categorize:
                 avg = lambda x: int(sum(x) / len(x)) if x else 0
@@ -370,7 +422,11 @@ class sampling:
 
             print(categorized_r, categorized_g, categorized_b)
 
-            SampledArray.append((((OrderNumber + 1) * sampling.LayerThickness), (categorized_r, categorized_g, categorized_b)))
+            SampledArray.append((round((OrderNumber + 1) * sampling.LayerThickness, 2), (categorized_r, categorized_g, categorized_b)))
+        
+        if shown:
+            visualize_sample(img_copy)
+
         return SampledArray
 
     d_real = 52.7
@@ -394,10 +450,13 @@ class sampling:
 
             # Vectorized distance calculation using meshgrid (100-1000x faster)
             y, x = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
+
             dis_to_center = np.hypot(x - center[0], y - center[1]).astype(np.float32)
+
             real_dis_to_center = dis_to_center * (sampling.r_real / r_image)
+
             V = 1 / (1 + (real_dis_to_center / sampling.d_real) ** 2 ) ** 2
-            return t_img * V[..., np.newaxis]
+            return t_img / V[..., np.newaxis]
 
         def centre_white_sample(t_img : np.ndarray, geo_info: sampling.geo_info, region_size = 5):
 
@@ -416,13 +475,19 @@ class sampling:
             if t_img.shape[2] != 3:
                 print("Error: Not a RGB image.")
 
-        t_relative_luminance = prepare_t_relative_luminance(t_img, geo_info)
+        # t_relative_luminance = prepare_t_relative_luminance(t_img, geo_info)
 
-        incident_white = centre_white_sample(t_relative_luminance, geo_info)
+        incident_white = centre_white_sample(t_img, geo_info)
 
-        samples = sampling.sampleOneImage(t_relative_luminance, geo_info)
+        t_relative_luminance = t_img / incident_white * 255.0
 
-        return [(samples[i][0], np.array(samples[i][1]) / incident_white)for i in range(len(samples))]
+        samples = sampling.sampleOneImage(t_relative_luminance, geo_info, shown = shown, categorize = False)
+
+        # cv2.imshow("Relative Luminance", t_relative_luminance)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        return [(samples[i][0], np.array(samples[i][1]))for i in range(len(samples))]
 
 
     def __init__(self, 
@@ -470,13 +535,11 @@ def display_sample(SampledArray: list):
 if __name__ == "__main__":
     ImagePath = "csrc/SamplingNew/Images/DNGimages/t.png"
 
-    sampling.prepare_geometric(ImagePath, shown=True)
-
-    plt.show()
-
-    array = sampling.transmittance(ImagePath)
+    array = sampling.transmittance(ImagePath, shown=True)
 
     # print(f"KMeans was used {KMean_counter} times.")
     print(array)
 
     display_sample(array)
+
+    plt.show()
