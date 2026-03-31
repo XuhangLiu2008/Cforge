@@ -39,9 +39,8 @@ class sampling:
 
     @staticmethod
     def inverse_gamma_correction(img, gamma=2.2):
-        # 将标量或数组转换为浮点
-        value = np.asarray(value, dtype=np.float32)
-        # 根据 sRGB 规范，对于小于 0.04045 的数值使用线性部分
+        value = np.asarray(img, dtype=np.float32)
+
         mask = value <= 0.04045
         result = np.zeros_like(value)
         result[mask] = value[mask] / 12.92
@@ -464,16 +463,9 @@ class sampling:
             return np.average(t_img[center_y - region_size : center_y + region_size, 
                                     center_x - region_size : center_x + region_size])
 
-        if type(t_img) == str:
-            t_img = cv2.imread(t_img)
-            if t_img is None:
-                print("Error: Could not load image.")
-            else:
-                print("Image loaded successfully.")
-                print(f"Image shape: {t_img.shape}")
-            
-            if t_img.shape[2] != 3:
-                print("Error: Not a RGB image.")
+        t_img = sampling._flex_read(t_img)
+
+        t_img = sampling.inverse_gamma_correction(t_img)
 
         # t_relative_luminance = prepare_t_relative_luminance(t_img, geo_info)
 
@@ -481,13 +473,27 @@ class sampling:
 
         t_relative_luminance = t_img / incident_white * 255.0
 
-        samples = sampling.sampleOneImage(t_relative_luminance, geo_info, shown = shown, categorize = False)
+        samples = sampling.sampleOneImage(t_relative_luminance, geo_info, shown = shown, categorize = True)
 
         # cv2.imshow("Relative Luminance", t_relative_luminance)
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
         return [(samples[i][0], np.array(samples[i][1]))for i in range(len(samples))]
+
+    @staticmethod
+    def reflectance(r_img : str | np.ndarray, src_img : str | np.ndarray, 
+                    r_luminance : float, src_luminance : float,
+                    r_geo_info = None, src_geo_info = None, shown = False):
+        
+        r_img = sampling._flex_read(r_img)
+        src_img = sampling._flex_read(src_img)
+
+        if r_geo_info is None:
+            r_geo_info = sampling.prepare_geometric(r_img, shown=shown)
+        
+        r_img = r_img / np.sum(r_img) * r_luminance
+        src_img = src_img / np.sum(src_img) * src_luminance
 
 
     def __init__(self, 
