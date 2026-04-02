@@ -9,6 +9,8 @@ import sampling
 
 import pprint
 
+import visual_manage
+
 
 class Filament:
 
@@ -19,9 +21,9 @@ class Filament:
     @staticmethod
     def KMrates(K : np.ndarray, S : np.ndarray, thickness : float) -> tuple[np.ndarray, np.ndarray]:
         # K stands for absorption coefficient, S stands for scattering coefficient
-        # T_KM is the penetrate rate, R_KM is the reflectance
+        # T_KM is the transmittance, R_KM is the reflectance
 
-        #IMPORTANCT: T_KM and R_KM are the penetrate rate and reflectance that do not consider the base reflection. so it could be used to calculate the circumstance where multiple filaments are stacked
+        #IMPORTANCT: T_KM and R_KM are the transmittance and reflectance that do not consider the base reflection. so it could be used to calculate the circumstance where multiple filaments are stacked
 
         T_KM = np.zeros(3, dtype=float)
         R_KM = np.zeros(3, dtype=float)
@@ -196,7 +198,9 @@ class Filament:
         print("t enlarge factors:", t_enlarge_factor)
         print("r enlarge factors:", r_enlarge_factor)
 
-        def display_results_plot():
+
+        @visual_manage.visualmethod("Regression Results")
+        def display_results_plot(fig = None, ax = None):
             
             d_sample = np.asarray(thickness_list, dtype=float)
 
@@ -224,48 +228,48 @@ class Filament:
             r_g_data = r_rgb_data[:, 1]
             r_b_data = r_rgb_data[:, 2]
 
-            plt.figure(figsize=(10, 4))
+            fig.set_size_inches(10, 4)
 
-            plt.subplot(1, 2, 1)
+            ax = fig.add_subplot(1, 2, 1)
 
-            plt.scatter(d_sample, t_r_sample, c = 'r', label='R samples')
-            plt.scatter(d_sample, t_g_sample, c = 'g', label='G samples')
-            plt.scatter(d_sample, t_b_sample, c = 'b', label='B samples')
-            plt.plot(d_data, t_r_data, 'r-', label='R fit')
-            plt.plot(d_data, t_g_data, 'g-', label='G fit')
-            plt.plot(d_data, t_b_data, 'b-', label='B fit')
+            ax.scatter(d_sample, t_r_sample, c = 'r', label='R samples')
+            ax.scatter(d_sample, t_g_sample, c = 'g', label='G samples')
+            ax.scatter(d_sample, t_b_sample, c = 'b', label='B samples')
+            ax.plot(d_data, t_r_data, 'r-', label='R fit')
+            ax.plot(d_data, t_g_data, 'g-', label='G fit')
+            ax.plot(d_data, t_b_data, 'b-', label='B fit')
 
-            plt.vlines(d_data, [-0.2*np.max(t_r_data)] * 1000, [0] * 1000, np.array(t_rgb_data)/np.max(t_rgb_data))
-            plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/np.max(t_rgb_data), 2)})")
+            ax.vlines(d_data, [-0.2*np.max(t_r_data)] * 1000, [0] * 1000, np.array(t_rgb_data)/np.max(t_rgb_data))
+            ax.text(0.1, -0.1*np.max(t_r_data), f"TRANSMITTANCE (*{round(1/np.max(t_rgb_data), 2)})")
 
-            plt.xlabel('Thickness (mm)')
-            plt.ylabel('Penetrate Rate')
-            plt.xlim(0, np.max(d_sample) * 1.2)
-            # plt.legend()
-            plt.grid()
-            plt.title("Penetrate Rate vs. Thickness")
+            ax.set_xlabel('Thickness (mm)')
+            ax.set_ylabel('Transmittance')
+            ax.set_xlim(0, np.max(d_sample) * 1.2)
+            # ax.legend()
+            ax.grid()
+            ax.set_title("Transmittance vs. Thickness")
 
-            plt.subplot(1, 2, 2)
+            ax = fig.add_subplot(1, 2, 2)
 
-            plt.scatter(d_sample, r_r_sample, c = 'r', label='R samples')
-            plt.scatter(d_sample, r_g_sample, c = 'g', label='G samples')
-            plt.scatter(d_sample, r_b_sample, c = 'b', label='B samples')
-            plt.plot(d_data, r_r_data, 'r-', label='R fit')
-            plt.plot(d_data, r_g_data, 'g-', label='G fit')
-            plt.plot(d_data, r_b_data, 'b-', label='B fit')
+            ax.scatter(d_sample, r_r_sample, c = 'r', label='R samples')
+            ax.scatter(d_sample, r_g_sample, c = 'g', label='G samples')
+            ax.scatter(d_sample, r_b_sample, c = 'b', label='B samples')
+            ax.plot(d_data, r_r_data, 'r-', label='R fit')
+            ax.plot(d_data, r_g_data, 'g-', label='G fit')
+            ax.plot(d_data, r_b_data, 'b-', label='B fit')
 
-            plt.xlabel('Thickness (mm)')
-            plt.ylabel('Reflectance')
-            plt.xlim(0, np.max(d_sample) * 1.2)
-            # plt.legend()
-            plt.grid()
-            plt.title("Reflectance vs. Thickness")
+            ax.set_xlabel('Thickness (mm)')
+            ax.set_ylabel('Reflectance')
+            ax.set_xlim(0, np.max(d_sample) * 1.2)
+            # ax.legend()
+            ax.grid()
+            ax.set_title("Reflectance vs. Thickness")
 
-            plt.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(np.clip(r_rgb_data, 0, 1)))
-            plt.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
+            ax.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(np.clip(r_rgb_data, 0, 1)))
+            ax.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
 
             
-
+        @visual_manage.visualmethod("Prediction Results")
         def display_prediction(): # 这个还要改，但是不着急
             colour_list = []
             for d in thickness_list:
@@ -328,21 +332,16 @@ class Filament:
             sampling.display_sample(colour_list)
             plt.title(f"Predicted Colours (*{round(1/max_v, 2)})")
 
+
+        @visual_manage.visualmethod("Original Samples")
         def display_origin(): # 这个还要改，但是不着急
             sampling.display_square_sample(self.r_samples)
             plt.title("Sampled Colours")
 
         if shown:
             display_results_plot()
-            plt.figure(1)
 
-            # display_prediction()
-            # plt.figure(2)
-
-            display_origin()
-            plt.figure(2)
-
-            plt.show()
+            # display_origin()
 
         return 
 
@@ -391,6 +390,8 @@ if __name__ == '__main__':
         print("<<<<<Original>>>>>")
         pprint.pprint(r_array)
         print(red_color_rate, ", ", green_color_rate, ", ", blue_color_rate)
+
+        plt.show()
 
     # r_array = [[0.1, [132, 167, 202]], 
     #            [0.2, [181, 194, 177]], 

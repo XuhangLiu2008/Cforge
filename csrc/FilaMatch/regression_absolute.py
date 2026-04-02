@@ -13,12 +13,37 @@ import sampling
 
 import pprint
 
-
 class Filament:
 
-    refra_index = 1.65
-    default_k1 = 0.11
-    default_k2 = 0.65
+    """
+
+    NOTE: Variables Table
+    _________________________________________________________________________________________________
+    name | meaning                                                                                  |
+    -----+------------------------------------------------------------------------------------------|
+    d    | thickness                                                                                |
+    K    | absorption coefficient                                                                   |
+    S    | scattering coefficient                                                                   |
+         |                                                                                          |
+    T_KM | transmittance calculated by Kubelka-Munk theory, without considering the base reflection |
+    R_KM | reflectance calculated by Kubelka-Munk theory, without considering the base reflection   |
+         |                                                                                          |
+    T_m  | transmittance after Saunderson correction, which considers the base reflection           |
+    T_m  | transmittance after Saunderson correction, which considers the base reflection           |
+    R_m  | reflectance after Saunderson correction, which considers the base reflection             |
+         |                                                                                          |
+    k1   | external reflectance of surface where light enters the filament                          |
+    k2   | external reflectance of surface where light leaves the filament                          |
+    r1   | internal reflectance of surface where light enters the filament                          |
+    r2   | internal reflectance of surface where light leaves the filament                          |
+         |                                                                                          |
+    k_t  | external reflectance of the top surface                                                  |
+    k_b  | external reflectance of the bottom surface                                               |
+    r_t  | internal reflectance of the top surface                                                  |
+    r_b  | internal reflectance of the bottom surface                                               |
+    _________________________________________________________________________________________________
+
+    """
 
     @staticmethod
     def KMrates(K : np.ndarray, S : np.ndarray, thickness : float) -> tuple[np.ndarray, np.ndarray]:
@@ -49,9 +74,7 @@ class Filament:
         return T_KM, R_KM
 
     @staticmethod
-    def SaundersonCorrection(T_KM : np.ndarray, R_KM : np.ndarray, 
-                             k1 = default_k1, k2 = default_k2) -> tuple[np.ndarray, np.ndarray]:
-        # k1 is the reflectance of the surface, k2 is the reflectance of the inner boundary
+    def SaundersonCorrection(T_KM : np.ndarray, R_KM : np.ndarray, k1 : float, r1 : float, r2 : float) -> tuple[np.ndarray, np.ndarray]:
 
         T_m = np.zeros(3, dtype=float)
         R_m = np.zeros(3, dtype=float)
@@ -61,17 +84,19 @@ class Filament:
             # T_m = (1 - k1) * (1 - k2) * T_KM / (1 - k2 * R_KM)
             # R_m = k1 + (1 - k1)^2 * (R_KM + k2 * T_KM^2) / (1 - k2 * R_KM)
 
-            denominator = 1.0 - k2 * R_KM[i]
-            T_m[i] = (1.0 - k1) * (1.0 - k2) * T_KM[i] / denominator
-            R_m[i] = k1 + (1.0 - k1) ** 2 * (R_KM[i] + k2 * T_KM[i] ** 2) / denominator
+            denominator = (1.0 - r1 * R_KM[i]) * (1.0 - r2 * R_KM[i]) - r1 * r2 * T_KM[i] ** 2
+            T_m[i] = (1.0 - k1) * (1.0 - r2) * T_KM[i] / denominator
+            R_m[i] = k1 + (1.0 - k1) * (1.0 - r1) * (R_KM[i] - r2 * (R_KM[i] ** 2 - T_KM[i] ** 2)) / denominator
 
         return T_m, R_m
 
+    
     @staticmethod
-    def RatesInAir(thickness, absorb_coeff, scatter_coeff, enlarge_factor = 1, k1 = default_k1, k2 = default_k2):
-        T_KM, R_KM = Filament.KMrates(absorb_coeff, scatter_coeff, thickness)
-        T_m, R_m = Filament.SaundersonCorrection(T_KM, R_KM, k1, k2)
-        return enlarge_factor * T_m, enlarge_factor * R_m
+    def RatesInAir(d, K, S, k_t, k_b, r_t, r_b):
+        T_KM, R_KM = Filament.KMrates(K, S, d)
+        T_m, _ = Filament.SaundersonCorrection(T_KM, R_KM, k_b, r_b, r_t)
+        _, R_m = Filament.SaundersonCorrection(T_KM, R_KM, k_t, r_t, r_b)
+        return T_m, R_m
 
     def __init__(self, brand, name,
         absorb_coeff = np.zeros(3, dtype=float),
@@ -93,34 +118,12 @@ class Filament:
     def sampling(self, T_image_path, R_image_path):
         self.t_samples = sampling.square_sampling(T_image_path)
         self.r_samples = sampling.square_sampling(R_image_path)
-    
-    @staticmethod
-    def inverseGamma(x):
-        x = x / 255.0
-        if x <= 0.04045:
-            return x / 12.92
-        else:
-            return ((x + 0.055) / 1.055) ** 2.4
-
-    # R_temp2coff = {4000 : 1.8}
-    # G_temp2coff = {4000 : 1.0}
-    # B_temp2coff = {4000 : 1.4}
-
-    R_temp2coff = {4000 : 1.0}
-    G_temp2coff = {4000 : 1.0}
-    B_temp2coff = {4000 : 1.0}
-
-    @staticmethod
-    def RGB2RelativeIntensity(color, gamma = 2.4, color_temp = 4000):
-        return np.array([Filament.inverseGamma(color[0]) / Filament.R_temp2coff[color_temp],
-                         Filament.inverseGamma(color[1]) / Filament.G_temp2coff[color_temp],
-                         Filament.inverseGamma(color[2]) / Filament.B_temp2coff[color_temp]])
 
     def calculateCoefficients(self, shown = False, color_temp = 4000, gamma = 2.4):
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
-        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, t_enlarge_factor, r_enlarge_factor):
+        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, k_t, k_b, r_t, r_b):
             # thickness here should be an array with 6 identical copies
             # to fit all coeffs together
             length = len(thickness) // 6
@@ -132,90 +135,63 @@ class Filament:
             r_res = np.zeros((length, 3))
 
             for i in range(length):
-                t_res[i], _ = Filament.RatesInAir(thickness[i], K, S, t_enlarge_factor)
-                _, r_res[i] = Filament.RatesInAir(thickness[i], K, S, r_enlarge_factor)
+                t_res[i], r_res[i] = Filament.RatesInAir(thickness[i], K, S, k_t, k_b, r_t, r_b)
 
             return list(t_res.T.flatten()) + list(r_res.T.flatten())
 
         thickness_list = []
+        t_rgb_list = [[], [], []]
+        r_rgb_list = [[], [], []]
 
-        t_r_list = []
-        t_g_list = []
-        t_b_list = []
+        for i in range(len(self.t_samples)):
+            t_sample = self.t_samples[i]
+            r_sample = self.r_samples[i]
 
-        for sample in self.t_samples:
-            thickness_list.append(sample[0])
-            intensity = Filament.RGB2RelativeIntensity(sample[1], gamma=gamma, color_temp=color_temp)
-            t_r_list.append(intensity[0])
-            t_g_list.append(intensity[1])
-            t_b_list.append(intensity[2])
+            if t_sample[0] != r_sample[0]:
+                raise ValueError(f"Thickness mismatch between T and R samples at index {i}: {t_sample[0]} vs {r_sample[0]}")
+            thickness_list.append(t_sample[0])
 
-        r_r_list = []
-        r_g_list = []
-        r_b_list = []
+            t_rgb_list[0].append(t_sample[1][0])
+            t_rgb_list[1].append(t_sample[1][1])
+            t_rgb_list[2].append(t_sample[1][2])
 
-        for sample in self.r_samples:
+            r_rgb_list[0].append(r_sample[1][0])
+            r_rgb_list[1].append(r_sample[1][1])
+            r_rgb_list[2].append(r_sample[1][2])
 
-            intensity = Filament.RGB2RelativeIntensity(sample[1], gamma=gamma, color_temp=color_temp)
-            r_r_list.append(intensity[0])
-            r_g_list.append(intensity[1])
-            r_b_list.append(intensity[2])
-
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.5, 0.5]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [10, 10, 10, 10, 10, 10, np.inf, np.inf])
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5]
+        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                  [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 1.0, 1.0, 1.0, 1.0])
         # constrain params to physically meaningful ranges
 
         MAXFEV = int(1e6)
 
         thickness_arr = np.asarray(thickness_list * 6, dtype=float)
-        target_arr = np.asarray((t_r_list + t_g_list + t_b_list) + 
-                                (r_r_list + r_g_list + r_b_list), dtype=float)
+        target_arr = np.asarray(sum(t_rgb_list)+sum(r_rgb_list), dtype=float)
 
         coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
 
-        r_coefficient = np.array([coefficient[0], coefficient[1], coefficient[6], coefficient[7]])
-        g_coefficient = np.array([coefficient[2], coefficient[3], coefficient[6], coefficient[7]])
-        b_coefficient = np.array([coefficient[4], coefficient[5], coefficient[6], coefficient[7]])
+        self.absorb_coeff = np.array([coefficient[0], coefficient[2], coefficient[4]])
+        self.scatter_coeff = np.array([coefficient[1], coefficient[3], coefficient[5]])
 
-        self.absorb_coeff = np.array([r_coefficient[0], g_coefficient[0], b_coefficient[0]])
-        self.scatter_coeff = np.array([r_coefficient[1], g_coefficient[1], b_coefficient[1]])
-        t_enlarge_factor = coefficient[6]
-        r_enlarge_factor = coefficient[7]
+        surface_reflectance = coefficient[6:10]
 
-        if self.icon_colour is None:
-            tmp = (Filament.RatesInAir(100, self.absorb_coeff, self.scatter_coeff, 1))[1]
-            self.icon_colour = np.uint8(tmp * 255)
-
-        print("R coef:", r_coefficient)
-        print("G coef:", g_coefficient)
-        print("B coef:", b_coefficient)
         print("absorb coeff:", self.absorb_coeff)
         print("scatter coeff:", self.scatter_coeff)
-        print("icon colour:", self.icon_colour)
-
-        print("t enlarge factors:", t_enlarge_factor)
-        print("r enlarge factors:", r_enlarge_factor)
+        print("surface reflectance (k_t, k_b, r_t, r_b):", surface_reflectance)
 
         def display_results_plot():
             
             d_sample = np.asarray(thickness_list, dtype=float)
-
-            t_r_sample = np.asarray(t_r_list, dtype=float) / t_enlarge_factor
-            t_g_sample = np.asarray(t_g_list, dtype=float) / t_enlarge_factor
-            t_b_sample = np.asarray(t_b_list, dtype=float) / t_enlarge_factor
-
-            r_r_sample = np.asarray(r_r_list, dtype=float) / r_enlarge_factor
-            r_g_sample = np.asarray(r_g_list, dtype=float) / r_enlarge_factor
-            r_b_sample = np.asarray(r_b_list, dtype=float) / r_enlarge_factor
+            t_sample = np.asarray(t_rgb_list, dtype=float)
+            r_sample = np.asarray(r_rgb_list, dtype=float)
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
-
             t_rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
             r_rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
 
             for i, thickness in enumerate(d_data):
-                t_rgb_data[i], r_rgb_data[i] = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, 1)
+                t_rgb_data[i], r_rgb_data[i] = Filament.RatesInAir(thickness, self.absorb_coeff, self.scatter_coeff, *surface_reflectance)
 
             t_r_data = t_rgb_data[:, 0]
             t_g_data = t_rgb_data[:, 1]
@@ -229,9 +205,9 @@ class Filament:
 
             plt.subplot(1, 2, 1)
 
-            plt.scatter(d_sample, t_r_sample, c = 'r', label='R samples')
-            plt.scatter(d_sample, t_g_sample, c = 'g', label='G samples')
-            plt.scatter(d_sample, t_b_sample, c = 'b', label='B samples')
+            plt.scatter(d_sample, t_sample[0], c = 'r', label='R samples')
+            plt.scatter(d_sample, t_sample[1], c = 'g', label='G samples')
+            plt.scatter(d_sample, t_sample[2], c = 'b', label='B samples')
             plt.plot(d_data, t_r_data, 'r-', label='R fit')
             plt.plot(d_data, t_g_data, 'g-', label='G fit')
             plt.plot(d_data, t_b_data, 'b-', label='B fit')
@@ -248,9 +224,9 @@ class Filament:
 
             plt.subplot(1, 2, 2)
 
-            plt.scatter(d_sample, r_r_sample, c = 'r', label='R samples')
-            plt.scatter(d_sample, r_g_sample, c = 'g', label='G samples')
-            plt.scatter(d_sample, r_b_sample, c = 'b', label='B samples')
+            plt.scatter(d_sample, r_sample[0], c = 'r', label='R samples')
+            plt.scatter(d_sample, r_sample[1], c = 'g', label='G samples')
+            plt.scatter(d_sample, r_sample[2], c = 'b', label='B samples')
             plt.plot(d_data, r_r_data, 'r-', label='R fit')
             plt.plot(d_data, r_g_data, 'g-', label='G fit')
             plt.plot(d_data, r_b_data, 'b-', label='B fit')
@@ -265,15 +241,10 @@ class Filament:
             plt.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(np.clip(r_rgb_data, 0, 1)))
             plt.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
 
-            
-
         def display_prediction(): # 这个还要改，但是不着急
             colour_list = []
             for d in thickness_list:
                 colour_list.append(list(Filament.RatesInAir(d, self.absorb_coeff, self.scatter_coeff, 1)[0]))
-            
-            print(t_enlarge_factor)
-            print(r_enlarge_factor)
 
             max_v = max(max(colour_list))
 
