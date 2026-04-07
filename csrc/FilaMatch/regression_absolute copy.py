@@ -44,6 +44,11 @@ class Filament:
 
     """
 
+    default_k_t = 0.02
+    default_k_b = 0.02
+    default_r_t = 0.15
+    default_r_b = 0.15
+
     @staticmethod
     def KMrates(K : np.ndarray, S : np.ndarray, thickness : float) -> tuple[np.ndarray, np.ndarray]:
         # K stands for absorption coefficient, S stands for scattering coefficient
@@ -91,7 +96,10 @@ class Filament:
 
     
     @staticmethod
-    def RatesInAir(d, K, S, k_t, k_b, r_t, r_b):
+    def RatesInAir(d, K, S, k_t = default_k_t, 
+                   k_b = default_k_b, 
+                   r_t = default_r_t, 
+                   r_b = default_r_b):
         T_KM, R_KM = Filament.KMrates(K, S, d)
         T_m, _ = Filament.SaundersonCorrection(T_KM, R_KM, k_b, r_b, r_t)
         _, R_m = Filament.SaundersonCorrection(T_KM, R_KM, k_t, r_t, r_b)
@@ -122,7 +130,7 @@ class Filament:
         # samples is a list of [thickness, colour]
         # colour should be np.uint8 array with size 3
 
-        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, k_t, k_b, r_t, r_b):
+        def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b):
             # thickness here should be an array with 6 identical copies
             # to fit all coeffs together
             length = len(thickness) // 6
@@ -134,7 +142,7 @@ class Filament:
             r_res = np.zeros((length, 3))
 
             for i in range(length):
-                t_res[i], r_res[i] = Filament.RatesInAir(thickness[i], K, S, k_t, k_b, r_t, r_b)
+                t_res[i], r_res[i] = Filament.RatesInAir(thickness[i], K, S)
 
             return list(t_res.T.flatten()) + list(r_res.T.flatten())
 
@@ -158,9 +166,9 @@ class Filament:
             r_rgb_list[1].append(r_sample[1][1] / 255.0)
             r_rgb_list[2].append(r_sample[1][2] / 255.0)
 
-        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.02, 0.02, 0.2, 0.2]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 0.04, 0.04, 0.4, 0.4])
+        reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                  [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
         # constrain params to physically meaningful ranges
 
         MAXFEV = int(1e6)
@@ -215,7 +223,7 @@ class Filament:
             plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/np.max(t_rgb_data), 2)})")
 
             plt.xlabel('Thickness (mm)')
-            plt.ylabel('Transmittance')
+            plt.ylabel('Penetrate Rate')
             plt.xlim(0, np.max(d_sample) * 1.2)
             # plt.legend()
             plt.grid()
@@ -237,8 +245,8 @@ class Filament:
             plt.grid()
             plt.title("Reflectance vs. Thickness")
 
-            plt.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(r_rgb_data)/np.max(r_rgb_data))
-            plt.text(0.1, -0.1*np.max(r_r_data), f"REFLECT (*{round(1/np.max(r_rgb_data), 2)})")
+            plt.vlines(d_data, [-0.2*np.max(r_r_data)] * 1000, [-0] * 1000, np.array(np.clip(r_rgb_data, 0, 1)))
+            plt.text(0.1, -0.1*np.max(r_r_data), "REFLECT")
 
         def display_prediction(): # 这个还要改，但是不着急
             colour_list = []
@@ -324,13 +332,9 @@ if __name__ == '__main__':
     test_filament = Filament("test", "test")
     # test_filament.sampling(image_path, image_path)
 
-    # t_array = [(0.1, (237.0, 214.0, 116.0)), (0.2, (203.0, 150.0, 23.0)), (0.3, (166.0, 94.0, 0.0)), (0.4, (134.0, 65.0, np.float64(0.0))), (0.5, (109.0, 45.0, np.float64(0.0))), (0.6, (97.0, 32.0, np.float64(0.0))), (0.7, (91.0, 24.0, np.float64(0.0))), (0.8, (86.0, 18.0, np.float64(0.0))), (0.9, (63.0, 12.0, np.float64(0.0))), (1.0, (72.0, 10.0, np.float64(0.0))), (1.1, (67.0, 8.0, np.float64(0.0))), (1.2, (61.0, 6.0, np.float64(0.0))), (1.3, (58.0, 4.0, np.float64(0.0))), (1.4, (46.0, 3.0, np.float64(0.0))), (1.5, (50.0, 2.0, np.float64(0.0))), (1.6, (49.0, 6.0, np.float64(0.00928948029123776)))]
+    t_array = [(0.1, (237.0, 214.0, 116.0)), (0.2, (203.0, 150.0, 23.0)), (0.3, (166.0, 94.0, 0.0)), (0.4, (134.0, 65.0, np.float64(0.0))), (0.5, (109.0, 45.0, np.float64(0.0))), (0.6, (97.0, 32.0, np.float64(0.0))), (0.7, (91.0, 24.0, np.float64(0.0))), (0.8, (86.0, 18.0, np.float64(0.0))), (0.9, (63.0, 12.0, np.float64(0.0))), (1.0, (72.0, 10.0, np.float64(0.0))), (1.1, (67.0, 8.0, np.float64(0.0))), (1.2, (61.0, 6.0, np.float64(0.0))), (1.3, (58.0, 4.0, np.float64(0.0))), (1.4, (46.0, 3.0, np.float64(0.0))), (1.5, (50.0, 2.0, np.float64(0.0))), (1.6, (49.0, 6.0, np.float64(0.00928948029123776)))]
     
-    # r_array = [(0.1, (12.0, 9.0, 2.0)), (0.2, (22.0, 15.0, 2.0)), (0.3, (35.0, 24.0, 4.0)), (0.4, (35.0, 18.0, 2.0)), (0.5, (38.0, 23.0, 1.0)), (0.6, (40.0, 24.0, 1.0)), (0.7, (42.0, 23.0, 0.0)), (0.8, (42.0, 23.0, 1.0)), (0.9, (42.0, 24.0, 1.0)), (1.0, (45.0, 26.0, 2.0)), (1.1, (44.0, 25.0, 1.0)), (1.2, (44.0, 25.0, 1.0)), (1.3, (44.0, 23.0, 0.0)), (1.4, (45.0, 24.0, 0.0)), (1.5, (46.0, 26.0, 2.0)), (1.6, (44.0, 23.0, 0.0))]
-
-    t_array = [(0.1, (170.0, 223.0, 212.0)), (0.2, (35.0, 138.0, 204.0)), (0.3, (0.0, 91.0, 209.0)), (0.4, (np.float64(0.0007878151260504202), 60.0, 214.0)), (0.5, (np.float64(0.0), 39.0, 216.0)), (0.6, (np.float64(0.0), 29.0, 222.0)), (0.7, (np.float64(0.0), 21.0, 213.0)), (0.8, (np.float64(0.0), 15.0, 204.0)), (0.9, (np.float64(0.0), 11.0, 189.0)), (1.0, (np.float64(0.014968487394957984), 9.0, 174.0)), (1.1, (0.0, 6.0, 151.0)), (1.2, (1.0, 5.0, 126.0)), (1.3, (1.0, 5.0, 110.0)), (1.4, (1.0, 5.0, 82.0)), (1.5, (2.0, 7.0, 61.0)), (1.6, (3.0, 9.0, 50.0))]
-
-    r_array
+    r_array = [(0.1, (12.0, 9.0, 2.0)), (0.2, (22.0, 15.0, 2.0)), (0.3, (35.0, 24.0, 4.0)), (0.4, (35.0, 18.0, 2.0)), (0.5, (38.0, 23.0, 1.0)), (0.6, (40.0, 24.0, 1.0)), (0.7, (42.0, 23.0, 0.0)), (0.8, (42.0, 23.0, 1.0)), (0.9, (42.0, 24.0, 1.0)), (1.0, (45.0, 26.0, 2.0)), (1.1, (44.0, 25.0, 1.0)), (1.2, (44.0, 25.0, 1.0)), (1.3, (44.0, 23.0, 0.0)), (1.4, (45.0, 24.0, 0.0)), (1.5, (46.0, 26.0, 2.0)), (1.6, (44.0, 23.0, 0.0))]
 
     test_filament.t_samples = t_array
     test_filament.r_samples = r_array

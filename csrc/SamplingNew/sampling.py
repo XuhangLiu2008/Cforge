@@ -54,6 +54,8 @@ class sampling:
     CentreEmptyRealR = 10.0 #(mm)
     SampleDiskRealSize = 30.0 #(mm)
 
+    CentreBlackConeRealR = 12.0 #(mm)
+
     @staticmethod
     def prepare_geometric(image_path : str | np.ndarray, shown=True) -> geo_info:
 
@@ -461,7 +463,8 @@ class sampling:
 
             center_x, center_y = int(geo_info.center_x), int(geo_info.center_y)
             return np.average(t_img[center_y - region_size : center_y + region_size, 
-                                    center_x - region_size : center_x + region_size])
+                                    center_x - region_size : center_x + region_size, 
+                                    (0, 1)])
 
         t_img = sampling._flex_read(t_img)
 
@@ -471,7 +474,7 @@ class sampling:
 
         incident_white = centre_white_sample(t_img, geo_info)
 
-        t_relative_luminance = t_img / incident_white * 255.0
+        t_relative_luminance = t_img / incident_white[np.newaxis, np.newaxis, ...] * 255.0
 
         samples = sampling.sampleOneImage(t_relative_luminance, geo_info, shown = shown, categorize = True)
 
@@ -479,21 +482,103 @@ class sampling:
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
-        return [(samples[i][0], np.array(samples[i][1]))for i in range(len(samples))]
+        return [(samples[i][0], samples[i][1])for i in range(len(samples))]
 
     @staticmethod
     def reflectance(r_img : str | np.ndarray, src_img : str | np.ndarray, 
                     r_luminance : float, src_luminance : float,
                     r_geo_info = None, src_geo_info = None, shown = False):
         
-        r_img = sampling._flex_read(r_img)
-        src_img = sampling._flex_read(src_img)
+        def sample_ring(gray, center, radius, angles):
+                intensities = []
+
+                for theta in angles:
+                    px = int(center[0] + radius * np.cos(theta))
+                    py = int(center[1] + radius * np.sin(theta))
+
+                    if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
+                        intensities.append(gray[py, px])
+                    else:
+                        intensities.append(0)
+
+                return np.array(intensities)
+
+        def src_geo_prepare(src_img_path : str | np.ndarray, shown = False):
+            
+            def detect_circle(gray):
+
+                blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
+
+                circles = cv2.HoughCircles(
+                    blur,
+                    cv2.HOUGH_GRADIENT,
+                    dp=1.2,
+                    minDist=100,
+                    param1=100,
+                    param2=30,
+                    minRadius=50,
+                    maxRadius=0
+                )
+
+                if circles is None:
+                    raise RuntimeError("No circle detected. Adjust parameters.")
+
+                x, y, _ = np.uint16(np.around(circles))[0][0]
+
+                angles = np.linspace(0, 2*np.pi, sampling.GeoSampleNumAngles, endpoint=False)
+
+                h, w = gray.shape
+                radii = np.linspace(0, min(h, w) // 2, sampling.GeoSampleNumRadii, endpoint=False)
+
+                means = []
+
+                for radius in radii:
+                    intensities = sample_ring(gray, (x, y), radius, angles)
+                    means.append(np.mean(intensities))
+
+                means = np.array(means)
+                gradients = np.gradient(sp.ndimage.gaussian_filter(means, sigma=2))
+
+                r_black_cone = radii[np.argmax(gradients)]
+
+                return (x, y), r_black_cone / sampling.CentreBlackConeRealR * sampling.SampleDiskRealSize
+
+                
+            img = sampling._flex_read(src_img_path)
+            
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            centre, radius = detect_circle(gray)
+
+            return sampling.geo_info(centre[0], centre[1], radius, None)
+        
+        r_img = sampling.inverse_gamma_correction(sampling._flex_read(r_img))
+        src_img = sampling.inverse_gamma_correction(sampling._flex_read(src_img))
+
+        stablise_coeff = max(np.max(r_img), np.max(src_img))
+
+        if src_geo_info is None:
+            src_geo_info = src_geo_prepare(np.uint8(src_img / stablise_coeff * 255.0), shown=shown)
 
         if r_geo_info is None:
-            r_geo_info = sampling.prepare_geometric(r_img, shown=shown)
+            r_geo_info = sampling.prepare_geometric(np.uint8(r_img / stablise_coeff * 255.0), shown=shown)
         
-        r_img = r_img / np.sum(r_img) * r_luminance
         src_img = src_img / np.sum(src_img) * src_luminance
+        src_samples = []
+        sample_angles = np.linspace(0, 2*np.pi, sampling.GeoSampleNumAngles, endpoint=False)
+        for radius in range(int(sampling.MinRadiusRatio * src_geo_info.radius), 
+                            int(sampling.MaxRadiusRatio * src_geo_info.radius)):
+            src_samples += list(sample_ring(src_img, 
+                                      (src_geo_info.center_x, src_geo_info.center_y), 
+                                      radius, sample_angles))
+
+        src_avg_luminance = np.average(np.array(src_samples), (0))
+
+        r_img = r_img / np.sum(r_img) * r_luminance / src_avg_luminance[np.newaxis, np.newaxis, ...] * 255.0
+
+        samples = sampling.sampleOneImage(r_img, r_geo_info, shown=shown, categorize=True)
+
+        return [(samples[i][0], samples[i][1])for i in range(len(samples))]
 
 
     def __init__(self, 
@@ -539,11 +624,22 @@ def display_sample(SampledArray: list):
     ax.axis('off')
 
 if __name__ == "__main__":
-    ImagePath = "csrc/SamplingNew/Images/DNGimages/t.png"
+    # t_ImagePath = "csrc/SamplingNew/Images/DNGimages/t.png"
+    # r_ImagePath = "csrc/SamplingNew/Images/DNGimages/r.png"
 
-    array = sampling.transmittance(ImagePath, shown=True)
+    t_ImagePath = "csrc/SamplingNew/Images/blue/t.JPG"
+    r_ImagePath = "csrc/SamplingNew/Images/blue/r.JPG"
 
-    # print(f"KMeans was used {KMean_counter} times.")
+    src_ImagePath = "csrc/SamplingNew/Images/DNGimages/IMG.JPG"
+
+    src_lumin = 895.83
+    r_lumin = 45.0
+
+    # array = sampling.transmittance(t_ImagePath, shown=True)
+
+    array = sampling.reflectance(r_ImagePath, src_ImagePath, r_luminance=r_lumin, src_luminance=src_lumin, shown=True)
+
+    print(f"KMeans was used {KMean_counter} times.")
     print(array)
 
     display_sample(array)

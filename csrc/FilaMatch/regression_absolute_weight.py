@@ -6,7 +6,7 @@ from operator import le
 
 import numpy as np
 
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 import matplotlib.pyplot as plt
 
 import sampling
@@ -123,9 +123,7 @@ class Filament:
         # colour should be np.uint8 array with size 3
 
         def combinedCoeff(thickness, K_r, S_r, K_g, S_g, K_b, S_b, k_t, k_b, r_t, r_b):
-            # thickness here should be an array with 6 identical copies
-            # to fit all coeffs together
-            length = len(thickness) // 6
+            length = len(thickness)
 
             K = np.array([K_r, K_g, K_b])
             S = np.array([S_r, S_g, S_b])
@@ -136,11 +134,13 @@ class Filament:
             for i in range(length):
                 t_res[i], r_res[i] = Filament.RatesInAir(thickness[i], K, S, k_t, k_b, r_t, r_b)
 
-            return list(t_res.T.flatten()) + list(r_res.T.flatten())
+            return t_res, r_res
 
         thickness_list = []
-        t_rgb_list = [[], [], []]
-        r_rgb_list = [[], [], []]
+        t_rgb_list = []
+        r_rgb_list = []
+
+        weight_sum = np.array([])
 
         for i in range(len(self.t_samples)):
             t_sample = self.t_samples[i]
@@ -150,25 +150,33 @@ class Filament:
                 raise ValueError(f"Thickness mismatch between T and R samples at index {i}: {t_sample[0]} vs {r_sample[0]}")
             thickness_list.append(t_sample[0])
 
-            t_rgb_list[0].append(t_sample[1][0] / 255.0)
-            t_rgb_list[1].append(t_sample[1][1] / 255.0)
-            t_rgb_list[2].append(t_sample[1][2] / 255.0)
+            t_rgb_list.append(np.array(t_sample[1]) / 255.0)
+            r_rgb_list.append(np.array(r_sample[1]) / 255.0)
+        
+        t_rgb_list = np.array(t_rgb_list)
+        r_rgb_list = np.array(r_rgb_list)
 
-            r_rgb_list[0].append(r_sample[1][0] / 255.0)
-            r_rgb_list[1].append(r_sample[1][1] / 255.0)
-            r_rgb_list[2].append(r_sample[1][2] / 255.0)
+        def loss_func(params):
+            K_r, S_r, K_g, S_g, K_b, S_b, k_t, k_b, r_t, r_b = params
+            predicted_T, predicted_R = combinedCoeff(thickness_list, K_r, S_r, K_g, S_g, K_b, S_b, k_t, k_b, r_t, r_b)
+            return np.sum((predicted_T - t_rgb_list) ** 2 / predicted_T) + np.sum((predicted_R - r_rgb_list) ** 2 / predicted_R)
 
         reasonable_guess = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.02, 0.02, 0.2, 0.2]
-        bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                  [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 0.04, 0.04, 0.4, 0.4])
+        # bounds = ([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        #           [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 0.04, 0.04, 0.4, 0.4])
+        bounds = [[0.0, np.inf]] * 6 + [[0.0, 1.0]] * 4
         # constrain params to physically meaningful ranges
 
-        MAXFEV = int(1e6)
+        MAXFEV = int(1e8)
 
-        thickness_arr = np.asarray(thickness_list * 6, dtype=float)
-        target_arr = np.asarray(t_rgb_list[0]+t_rgb_list[1]+t_rgb_list[2]+r_rgb_list[0]+r_rgb_list[1]+r_rgb_list[2], dtype=float)
+        # thickness_arr = np.asarray(thickness_list * 6, dtype=float)
+        # target_arr = np.asarray(t_rgb_list[0]+t_rgb_list[1]+t_rgb_list[2]+r_rgb_list[0]+r_rgb_list[1]+r_rgb_list[2], dtype=float)
 
-        coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
+        # coefficient, covariance = curve_fit(combinedCoeff, thickness_arr, target_arr, p0=reasonable_guess, bounds=bounds, maxfev=MAXFEV)
+
+        result = minimize(loss_func, reasonable_guess, bounds=bounds, options={'maxiter': MAXFEV})
+
+        coefficient = result.x
 
         self.absorb_coeff = np.array([coefficient[0], coefficient[2], coefficient[4]])
         self.scatter_coeff = np.array([coefficient[1], coefficient[3], coefficient[5]])
@@ -182,8 +190,8 @@ class Filament:
         def display_results_plot():
             
             d_sample = np.asarray(thickness_list, dtype=float)
-            t_sample = np.asarray(t_rgb_list, dtype=float)
-            r_sample = np.asarray(r_rgb_list, dtype=float)
+            t_sample = np.asarray(t_rgb_list.T, dtype=float)
+            r_sample = np.asarray(r_rgb_list.T, dtype=float)
 
             d_data = np.linspace(0, np.max(d_sample) * 1.1, 1000)
             t_rgb_data = np.zeros((d_data.shape[0], 3), dtype=float)
@@ -215,7 +223,7 @@ class Filament:
             plt.text(0.1, -0.1*np.max(t_r_data), f"PENETRATE (*{round(1/np.max(t_rgb_data), 2)})")
 
             plt.xlabel('Thickness (mm)')
-            plt.ylabel('Transmittance')
+            plt.ylabel('Penetrate Rate')
             plt.xlim(0, np.max(d_sample) * 1.2)
             # plt.legend()
             plt.grid()
@@ -324,13 +332,9 @@ if __name__ == '__main__':
     test_filament = Filament("test", "test")
     # test_filament.sampling(image_path, image_path)
 
-    # t_array = [(0.1, (237.0, 214.0, 116.0)), (0.2, (203.0, 150.0, 23.0)), (0.3, (166.0, 94.0, 0.0)), (0.4, (134.0, 65.0, np.float64(0.0))), (0.5, (109.0, 45.0, np.float64(0.0))), (0.6, (97.0, 32.0, np.float64(0.0))), (0.7, (91.0, 24.0, np.float64(0.0))), (0.8, (86.0, 18.0, np.float64(0.0))), (0.9, (63.0, 12.0, np.float64(0.0))), (1.0, (72.0, 10.0, np.float64(0.0))), (1.1, (67.0, 8.0, np.float64(0.0))), (1.2, (61.0, 6.0, np.float64(0.0))), (1.3, (58.0, 4.0, np.float64(0.0))), (1.4, (46.0, 3.0, np.float64(0.0))), (1.5, (50.0, 2.0, np.float64(0.0))), (1.6, (49.0, 6.0, np.float64(0.00928948029123776)))]
+    t_array = [(0.1, (237.0, 214.0, 116.0)), (0.2, (203.0, 150.0, 23.0)), (0.3, (166.0, 94.0, 0.0)), (0.4, (134.0, 65.0, np.float64(0.0))), (0.5, (109.0, 45.0, np.float64(0.0))), (0.6, (97.0, 32.0, np.float64(0.0))), (0.7, (91.0, 24.0, np.float64(0.0))), (0.8, (86.0, 18.0, np.float64(0.0))), (0.9, (63.0, 12.0, np.float64(0.0))), (1.0, (72.0, 10.0, np.float64(0.0))), (1.1, (67.0, 8.0, np.float64(0.0))), (1.2, (61.0, 6.0, np.float64(0.0))), (1.3, (58.0, 4.0, np.float64(0.0))), (1.4, (46.0, 3.0, np.float64(0.0))), (1.5, (50.0, 2.0, np.float64(0.0))), (1.6, (49.0, 6.0, np.float64(0.00928948029123776)))]
     
-    # r_array = [(0.1, (12.0, 9.0, 2.0)), (0.2, (22.0, 15.0, 2.0)), (0.3, (35.0, 24.0, 4.0)), (0.4, (35.0, 18.0, 2.0)), (0.5, (38.0, 23.0, 1.0)), (0.6, (40.0, 24.0, 1.0)), (0.7, (42.0, 23.0, 0.0)), (0.8, (42.0, 23.0, 1.0)), (0.9, (42.0, 24.0, 1.0)), (1.0, (45.0, 26.0, 2.0)), (1.1, (44.0, 25.0, 1.0)), (1.2, (44.0, 25.0, 1.0)), (1.3, (44.0, 23.0, 0.0)), (1.4, (45.0, 24.0, 0.0)), (1.5, (46.0, 26.0, 2.0)), (1.6, (44.0, 23.0, 0.0))]
-
-    t_array = [(0.1, (170.0, 223.0, 212.0)), (0.2, (35.0, 138.0, 204.0)), (0.3, (0.0, 91.0, 209.0)), (0.4, (np.float64(0.0007878151260504202), 60.0, 214.0)), (0.5, (np.float64(0.0), 39.0, 216.0)), (0.6, (np.float64(0.0), 29.0, 222.0)), (0.7, (np.float64(0.0), 21.0, 213.0)), (0.8, (np.float64(0.0), 15.0, 204.0)), (0.9, (np.float64(0.0), 11.0, 189.0)), (1.0, (np.float64(0.014968487394957984), 9.0, 174.0)), (1.1, (0.0, 6.0, 151.0)), (1.2, (1.0, 5.0, 126.0)), (1.3, (1.0, 5.0, 110.0)), (1.4, (1.0, 5.0, 82.0)), (1.5, (2.0, 7.0, 61.0)), (1.6, (3.0, 9.0, 50.0))]
-
-    r_array
+    r_array = [(0.1, (12.0, 9.0, 2.0)), (0.2, (22.0, 15.0, 2.0)), (0.3, (35.0, 24.0, 4.0)), (0.4, (35.0, 18.0, 2.0)), (0.5, (38.0, 23.0, 1.0)), (0.6, (40.0, 24.0, 1.0)), (0.7, (42.0, 23.0, 0.0)), (0.8, (42.0, 23.0, 1.0)), (0.9, (42.0, 24.0, 1.0)), (1.0, (45.0, 26.0, 2.0)), (1.1, (44.0, 25.0, 1.0)), (1.2, (44.0, 25.0, 1.0)), (1.3, (44.0, 23.0, 0.0)), (1.4, (45.0, 24.0, 0.0)), (1.5, (46.0, 26.0, 2.0)), (1.6, (44.0, 23.0, 0.0))]
 
     test_filament.t_samples = t_array
     test_filament.r_samples = r_array
