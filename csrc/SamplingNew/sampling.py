@@ -311,7 +311,7 @@ class sampling:
                 g_x_lower * y_proportion_lower + g_x_upper * y_proportion_upper,
                 r_x_lower * y_proportion_lower + r_x_upper * y_proportion_upper,
             )
-            return int(r), int(g), int(b)
+            return float(r), float(g), float(b)
             # tmp = fil_img[int(y), int(x)]
             # return tmp[0], tmp[1], tmp[2]
 
