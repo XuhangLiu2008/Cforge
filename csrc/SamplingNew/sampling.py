@@ -625,10 +625,10 @@ def display_sample(SampledArray: list):
 
 if __name__ == "__main__":
     # t_ImagePath = "csrc/SamplingNew/Images/DNGimages/t.png"
-    # r_ImagePath = "csrc/SamplingNew/Images/DNGimages/r.png"
+    r_ImagePath = "csrc/SamplingNew/Images/DNGimages/r.png"
 
     t_ImagePath = "csrc/SamplingNew/Images/blue/t.JPG"
-    r_ImagePath = "csrc/SamplingNew/Images/blue/r.JPG"
+    # r_ImagePath = "csrc/SamplingNew/Images/blue/r.JPG"
 
     src_ImagePath = "csrc/SamplingNew/Images/DNGimages/IMG.JPG"
 
