@@ -74,24 +74,94 @@ class sampling:
             return np.array(intensities)
 
         def detect_circle(gray):
+
+            x, y = None, None
+
+            def circle_centre_HoughCircle(gray):
             
-            blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
+                blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
 
-            circles = cv2.HoughCircles(
-                blur,
-                cv2.HOUGH_GRADIENT,
-                dp=1.2,
-                minDist=100,
-                param1=100,
-                param2=30,
-                minRadius=50,
-                maxRadius=0
-            )
+                kernel = np.array([[0, -1, 0],
+                    [-1, 5, -1],
+                    [0, -1, 0]], dtype=np.float32)
 
-            if circles is None:
+                blur = cv2.filter2D(blur, -1, kernel)
+
+                # cv2.imshow("blur", blur)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+
+                circles = cv2.HoughCircles(
+                    blur,
+                    cv2.HOUGH_GRADIENT,
+                    dp=1.2,
+                    minDist=100,
+                    param1=100,
+                    param2=30,
+                    minRadius=50,
+                    maxRadius=0
+                )
+
+                if circles is None:
+                    return None, None
+
+                x, y, _ = np.uint16(np.around(circles))[0][0]
+
+                return x, y
+
+            def circle_centre_Otsu(gray):
+
+                h, w = gray.shape
+
+                mask_vignette = np.zeros((h, w), dtype=np.uint8)
+
+                vignette_radius = int(min(w, h) * 0.45) 
+                cv2.circle(mask_vignette, (w//2, h//2), vignette_radius, 255, -1)
+                
+                gray = cv2.bitwise_and(gray, gray, mask=mask_vignette)
+                
+                blurred = cv2.GaussianBlur(gray, (9, 9), 0)
+                
+                _, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                
+                kernel_size = int(gray.shape[1] / 20)
+                if kernel_size % 2 == 0: kernel_size += 1
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+                
+                mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
+
+                contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                
+                if not contours:
+                    return None
+
+                max_contour = max(contours, key=cv2.contourArea)
+                
+                M = cv2.moments(max_contour)
+                if M["m00"] != 0:
+                    x = int(M["m10"] / M["m00"])
+                    y = int(M["m01"] / M["m00"])
+
+                    # gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+                    # cv2.drawContours(gray, [max_contour], -1, (0, 255, 0), 2)
+                    # cv2.circle(gray, (x, y), 10, (0, 0, 255), -1)
+                    # cv2.imshow("img", gray)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
+
+                    return x, y
+                
+                return None, None
+
+            x, y = circle_centre_HoughCircle(gray)
+
+            if x is None or y is None:
+                print("HoughCircles failed, trying Otsu's method...")
+                x, y = circle_centre_Otsu(gray)
+
+            if x is None or y is None:
                 raise RuntimeError("No circle detected. Adjust parameters.")
-
-            x, y, _ = np.uint16(np.around(circles))[0][0]
 
             angles = np.linspace(0, 2*np.pi, sampling.GeoSampleNumAngles, endpoint=False)
 
@@ -625,10 +695,13 @@ def display_sample(SampledArray: list):
 
 if __name__ == "__main__":
     # t_ImagePath = "csrc/SamplingNew/Images/DNGimages/t.png"
-    r_ImagePath = "csrc/SamplingNew/Images/DNGimages/r.png"
+    # r_ImagePath = "csrc/SamplingNew/Images/DNGimages/r.png"
 
-    t_ImagePath = "csrc/SamplingNew/Images/blue/t.JPG"
+    # t_ImagePath = "csrc/SamplingNew/Images/blue/t_new.JPG"
     # r_ImagePath = "csrc/SamplingNew/Images/blue/r.JPG"
+
+    t_ImagePath = "csrc/SamplingNew/Images/red/t.JPG"
+    r_ImagePath = "csrc/SamplingNew/Images/red/r.JPG"
 
     src_ImagePath = "csrc/SamplingNew/Images/DNGimages/IMG.JPG"
 
